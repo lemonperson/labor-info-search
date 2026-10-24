@@ -75,12 +75,37 @@ describe('domain schemas', () => {
   })
 
   it.each(['unverified', 'independently-confirmed', 'disputed'] satisfies ClaimStatus[])(
-    'preserves claim verification separately from source type: %s', (claimStatus) => {
+    'preserves explicit claim status for non-personal sources: %s', (claimStatus) => {
       expect(claimStatusSchema.parse(claimStatus)).toBe(claimStatus)
-      expect(sourceRecordSchema.parse({ ...record, claimStatus }).claimStatus).toBe(claimStatus)
+      expect(sourceRecordSchema.parse({ ...record, sourceType: 'media', claimStatus }).claimStatus).toBe(claimStatus)
     }
   )
 
+  it.each(['independently-confirmed', 'disputed'] as const)(
+    'rejects personal statements with claim status %s at the record boundary', (claimStatus) => {
+      expect(sourceRecordSchema.safeParse({ ...record, claimStatus }).success).toBe(false)
+    }
+  )
+
+  it.each(['independently-confirmed', 'disputed'] as const)(
+    'rejects personal statements with claim status %s inside sessions', (claimStatus) => {
+      expect(searchSessionSchema.safeParse({ ...session, records: [{ ...record, claimStatus }] }).success).toBe(false)
+    }
+  )
+
+  it('keeps independent confirmation in a separate source without upgrading the personal statement', () => {
+    const confirmation: SourceRecord = {
+      ...record, id: 'record-2', sourceType: 'media', publisher: '示例新闻媒体',
+      url: 'https://example.com/news/2', excerpt: '报道载明已独立核实的事项。',
+      claimStatus: 'independently-confirmed', relatedRecordIds: ['record-1']
+    }
+    const parsed = searchSessionSchema.parse({ ...session, records: [record, confirmation] })
+    expect(parsed.records[0].claimStatus).toBe('unverified')
+    expect(parsed.records[1].claimStatus).toBe('independently-confirmed')
+    expect(parsed.records[1].id).toBe('record-2')
+    expect(parsed.records[1].relatedRecordIds).toEqual(['record-1'])
+    expect(record.claimStatus).toBe('unverified')
+  })
   it('rejects unknown classifications', () => {
     expect(sourceTypeSchema.safeParse('official-looking').success).toBe(false)
     expect(subjectRoleSchema.safeParse('same-as-brand').success).toBe(false)

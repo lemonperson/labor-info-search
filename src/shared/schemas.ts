@@ -56,7 +56,11 @@ export const sourceRecordSchema = z.object({
   matchEvidence: z.array(nonBlankText).min(1),
   availability: z.enum(['available', 'unavailable', 'unknown']),
   relatedRecordIds: z.array(nonBlankText).optional()
-}).strict()
+}).strict().refine(
+  // Independent confirmation belongs to its own source, never to the personal statement.
+  ({ sourceType, claimStatus }) => sourceType !== 'employee-statement' || claimStatus === 'unverified',
+  { message: 'Personal statements must remain unverified', path: ['claimStatus'] }
+)
 
 export const eventGroupSchema = z.object({
   id: nonBlankText,
