@@ -22,6 +22,15 @@ export type SearchQuery = z.infer<typeof searchQuerySchema>
 export type ConnectorRun = z.infer<typeof connectorRunSchema>
 export type SourceRegistryEntry = z.infer<typeof sourceRegistryEntrySchema>
 export type SourceRegistry = z.infer<typeof sourceRegistrySchema>
+export interface SourceClassification {
+  sourceType: SourceType
+  claimStatus: ClaimStatus
+  registryId?: string
+}
+export interface DeduplicationResult {
+  records: SourceRecord[]
+  duplicates: Array<{ retainedId: string; mergedIds: string[] }>
+}
 
 export type Result<T, E> =
   | { ok: true; value: T }

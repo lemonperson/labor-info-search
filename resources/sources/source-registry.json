@@ -9,6 +9,42 @@
       "enabled": true,
       "requestsPerMinute": 12,
       "cacheTtlSeconds": 0
+    },
+    {
+      "id": "central-government",
+      "name": "Government domain classification metadata",
+      "sourceType": "government",
+      "homepageUrl": "https://www.gov.cn/",
+      "enabled": true,
+      "requestsPerMinute": 12,
+      "cacheTtlSeconds": 0
+    },
+    {
+      "id": "court-domain",
+      "name": "Court domain classification metadata",
+      "sourceType": "court-arbitration",
+      "homepageUrl": "https://www.court.gov.cn/",
+      "enabled": true,
+      "requestsPerMinute": 12,
+      "cacheTtlSeconds": 0
+    },
+    {
+      "id": "people-media",
+      "name": "People's Daily Online",
+      "sourceType": "media",
+      "homepageUrl": "https://www.people.com.cn/",
+      "enabled": true,
+      "requestsPerMinute": 12,
+      "cacheTtlSeconds": 0
+    },
+    {
+      "id": "xinhua-media",
+      "name": "Xinhua News",
+      "sourceType": "media",
+      "homepageUrl": "https://www.news.cn/",
+      "enabled": true,
+      "requestsPerMinute": 12,
+      "cacheTtlSeconds": 0
     }
   ]
 }

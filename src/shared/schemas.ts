@@ -55,7 +55,12 @@ export const sourceRecordSchema = z.object({
   claimStatus: claimStatusSchema,
   matchEvidence: z.array(nonBlankText).min(1),
   availability: z.enum(['available', 'unavailable', 'unknown']),
-  relatedRecordIds: z.array(nonBlankText).optional()
+  relatedRecordIds: z.array(nonBlankText).optional(),
+  /** Connector/query audit trail carried through normalization and deduplication. */
+  queryIds: z.array(nonBlankText).optional(),
+  connectorIds: z.array(nonBlankText).optional(),
+  canonicalUrl: webUrl.optional(),
+  latestAccessedAt: timestamp.optional()
 }).strict().refine(
   // Independent confirmation belongs to its own source, never to the personal statement.
   ({ sourceType, claimStatus }) => sourceType !== 'employee-statement' || claimStatus === 'unverified',
@@ -66,7 +71,9 @@ export const eventGroupSchema = z.object({
   id: nonBlankText,
   subjectId: nonBlankText,
   title: nonBlankText,
-  recordIds: z.array(nonBlankText).min(1)
+  recordIds: z.array(nonBlankText).min(1),
+  status: z.literal('suggested'),
+  matchEvidence: z.array(nonBlankText).min(1)
 }).strict()
 
 export const searchQuerySchema = z.object({

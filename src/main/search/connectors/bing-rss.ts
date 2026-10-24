@@ -71,6 +71,7 @@ export class BingRssConnector implements SearchConnector {
         publisher: toSafeDisplayText(item.source ?? '', 200) || target.hostname,
         ...(Number.isFinite(published) ? { publishedAt: new Date(published).toISOString() } : {}),
         accessedAt, sourceType: 'other', claimStatus: 'unverified', availability: 'unknown',
+        queryIds: [query.id], connectorIds: [this.id],
         excerpt: toSafeDisplayText(item.description ?? '', 1200),
         matchEvidence: [`检索线索（未经核验） ${this.id} / ${query.id}: ${queryText}`]
       })

@@ -26,7 +26,7 @@ const record: SourceRecord = {
   claimStatus: 'unverified', matchEvidence: ['正文出现完整企业名称'], availability: 'available'
 }
 const group: EventGroup = {
-  id: 'event-1', subjectId: 'subject-1', title: '劳动争议及后续', recordIds: ['record-1', 'record-2']
+  id: 'event-1', subjectId: 'subject-1', title: '劳动争议及后续', recordIds: ['record-1', 'record-2'], status: 'suggested', matchEvidence: ['标题和主体线索重合']
 }
 const session: SearchSession = {
   id: 'session-1', inputType: 'company-name', subject, queries: [query], records: [record],
