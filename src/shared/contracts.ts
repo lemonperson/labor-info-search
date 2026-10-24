@@ -1,21 +1,49 @@
-import { appInfoRequestSchema, appInfoSchema } from './schemas'
-import type { AppInfo, LaborApi } from './types'
+import { z } from 'zod'
+import {
+  appInfoRequestSchema, appInfoSchema, appSettingsSchema, historyGetResponseSchema,
+  historyIdRequestSchema, historyListRequestSchema, historyListResponseSchema, settingsPatchSchema,
+  storageEmptyRequestSchema, storageMutationResponseSchema
+} from './schemas'
+import type { AppInfo, AppSettings, LaborApi } from './types'
 
 export const appInfoContract = {
-  channel: 'app:get-info',
-  request: appInfoRequestSchema,
-  response: appInfoSchema
+  channel: 'app:get-info', request: appInfoRequestSchema, response: appInfoSchema
 } as const
 
-type InvokeAppInfo = (channel: typeof appInfoContract.channel, request: Record<string, never>) => Promise<unknown>
+export const storageContracts = {
+  'history:list': { request: historyListRequestSchema, response: historyListResponseSchema },
+  'history:get': { request: historyIdRequestSchema, response: historyGetResponseSchema },
+  'history:delete': { request: historyIdRequestSchema, response: storageMutationResponseSchema },
+  'history:clear': { request: storageEmptyRequestSchema, response: storageMutationResponseSchema },
+  'settings:get': { request: storageEmptyRequestSchema, response: appSettingsSchema },
+  'settings:update': { request: settingsPatchSchema, response: appSettingsSchema }
+} as const
 
-// This is the complete renderer-facing capability set; never expose ipcRenderer itself.
-export function createLaborApi(invoke: InvokeAppInfo): LaborApi {
+type StorageChannel = keyof typeof storageContracts
+type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel, request: unknown) => Promise<unknown>
+
+// The renderer receives only fixed capabilities, never raw IPC or database access.
+export function createLaborApi(invoke: InvokeLabor): LaborApi {
+  async function call<C extends StorageChannel>(channel: C, input: unknown): Promise<z.output<(typeof storageContracts)[C]['response']>> {
+    const contract = storageContracts[channel]
+    const request = contract.request.parse(input)
+    return contract.response.parse(await invoke(channel, request)) as z.output<(typeof storageContracts)[C]['response']>
+  }
   return Object.freeze({
     async getAppInfo() {
       const request = appInfoContract.request.parse({})
       return appInfoContract.response.parse(await invoke(appInfoContract.channel, request))
-    }
+    },
+    history: Object.freeze({
+      list: (limit = 50) => call('history:list', { limit }),
+      get: (id: string) => call('history:get', { id }),
+      delete: (id: string) => call('history:delete', { id }),
+      clear: () => call('history:clear', {})
+    }),
+    settings: Object.freeze({
+      get: () => call('settings:get', {}),
+      update: (patch: Partial<AppSettings>) => call('settings:update', patch)
+    })
   })
 }
 
@@ -23,5 +51,31 @@ export function createAppInfoHandler(readAppInfo: () => unknown): (payload: unkn
   return payload => {
     appInfoContract.request.parse(payload)
     return appInfoContract.response.parse(readAppInfo())
+  }
+}
+
+interface StorageOperations {
+  listSessions(limit: number): unknown
+  getSession(id: string): unknown
+  deleteSession(id: string): void
+  clearAll(): void
+  getSettings(): unknown
+  updateSettings(patch: Partial<AppSettings>): unknown
+}
+
+export function createStorageHandlers(operations: StorageOperations): Record<StorageChannel, (payload: unknown) => unknown> {
+  function handler<C extends StorageChannel>(channel: C, operation: (request: z.output<(typeof storageContracts)[C]['request']>) => unknown) {
+    return (payload: unknown): unknown => {
+      const request = storageContracts[channel].request.parse(payload) as z.output<(typeof storageContracts)[C]['request']>
+      return storageContracts[channel].response.parse(operation(request))
+    }
+  }
+  return {
+    'history:list': handler('history:list', ({ limit }) => operations.listSessions(limit)),
+    'history:get': handler('history:get', ({ id }) => operations.getSession(id)),
+    'history:delete': handler('history:delete', ({ id }) => { operations.deleteSession(id); return null }),
+    'history:clear': handler('history:clear', () => { operations.clearAll(); return null }),
+    'settings:get': handler('settings:get', () => operations.getSettings()),
+    'settings:update': handler('settings:update', patch => operations.updateSettings(patch))
   }
 }

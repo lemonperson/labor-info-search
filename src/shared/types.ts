@@ -1,11 +1,12 @@
 import type { z } from 'zod'
 import type {
-  appInfoSchema, claimStatusSchema, companySubjectSchema, connectorRunSchema,
+  appInfoSchema, appSettingsSchema, claimStatusSchema, companySubjectSchema, connectorRunSchema,
   entityCandidateSchema, eventGroupSchema, searchQuerySchema, searchSessionSchema,
   sourceRecordSchema, sourceRegistryEntrySchema, sourceRegistrySchema, sourceTypeSchema,
   subjectRoleSchema, subjectVerificationSchema
 } from './schemas'
 
+export type AppSettings = z.infer<typeof appSettingsSchema>
 export type AppInfo = z.infer<typeof appInfoSchema>
 export type CompanySubject = z.infer<typeof companySubjectSchema>
 export type EntityCandidate = z.infer<typeof entityCandidateSchema>
@@ -27,4 +28,14 @@ export type Result<T, E> =
 
 export interface LaborApi {
   getAppInfo(): Promise<AppInfo>
+  history: {
+    list(limit?: number): Promise<SearchSession[]>
+    get(id: string): Promise<SearchSession | null>
+    delete(id: string): Promise<null>
+    clear(): Promise<null>
+  }
+  settings: {
+    get(): Promise<AppSettings>
+    update(patch: Partial<AppSettings>): Promise<AppSettings>
+  }
 }

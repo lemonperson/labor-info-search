@@ -113,3 +113,17 @@ export const sourceRegistrySchema = z.object({
   ({ sources }) => new Set(sources.map(({ id }) => id)).size === sources.length,
   { message: 'Source IDs must be unique', path: ['sources'] }
 )
+
+export const appSettingsSchema = z.object({
+  saveHistory: z.boolean(),
+  theme: z.enum(['system', 'light', 'dark']),
+  browserProvider: z.enum(['bing', 'baidu', 'google'])
+}).strict()
+
+export const settingsPatchSchema = appSettingsSchema.partial().strict()
+export const historyListRequestSchema = z.object({ limit: z.number().int().min(1).max(100) }).strict()
+export const historyIdRequestSchema = z.object({ id: nonBlankText }).strict()
+export const historyListResponseSchema = z.array(searchSessionSchema).max(100)
+export const historyGetResponseSchema = searchSessionSchema.nullable()
+export const storageEmptyRequestSchema = z.object({}).strict()
+export const storageMutationResponseSchema = z.null()

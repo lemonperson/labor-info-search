@@ -1,8 +1,13 @@
+import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain } from 'electron'
-import { appInfoContract, createAppInfoHandler } from '../shared/contracts'
+import { appInfoContract, createAppInfoHandler, createStorageHandlers } from '../shared/contracts'
+import { openDatabase, type DatabaseHandle } from './database/database'
+import { SearchRepository } from './database/search-repository'
+import { SettingsRepository } from './database/settings-repository'
 import { createMainWindow } from './window'
 
 let mainWindow: BrowserWindow | null = null
+let database: DatabaseHandle | null = null
 
 function openMainWindow(): void {
   mainWindow = createMainWindow()
@@ -10,18 +15,31 @@ function openMainWindow(): void {
 }
 
 void app.whenReady().then(() => {
-  const getAppInfo = createAppInfoHandler(() => ({
-    name: '劳动信息检索',
-    version: app.getVersion(),
-    platform: process.platform
-  }))
+  database = openDatabase(join(app.getPath('userData'), 'labor-information.sqlite'))
+  const searches = new SearchRepository(database)
+  const settings = new SettingsRepository(database)
+  const handlers = {
+    [appInfoContract.channel]: createAppInfoHandler(() => ({
+      name: '劳动信息检索', version: app.getVersion(), platform: process.platform
+    })),
+    ...createStorageHandlers({
+      listSessions: limit => searches.listSessions(limit),
+      getSession: id => searches.getSession(id),
+      deleteSession: id => searches.deleteSession(id),
+      clearAll: () => searches.clearAll(),
+      getSettings: () => settings.getSettings(),
+      updateSettings: patch => settings.updateSettings(patch)
+    })
+  }
 
-  ipcMain.handle(appInfoContract.channel, (event, payload: unknown) => {
-    if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== event.sender.mainFrame) {
-      throw new Error('Untrusted IPC sender')
-    }
-    return getAppInfo(payload)
-  })
+  for (const [channel, handle] of Object.entries(handlers)) {
+    ipcMain.handle(channel, (event, payload: unknown) => {
+      if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== event.sender.mainFrame) {
+        throw new Error('Untrusted IPC sender')
+      }
+      return handle(payload)
+    })
+  }
 
   openMainWindow()
   app.on('activate', () => {
@@ -29,6 +47,7 @@ void app.whenReady().then(() => {
   })
 })
 
+app.on('before-quit', () => { database?.close(); database = null })
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })

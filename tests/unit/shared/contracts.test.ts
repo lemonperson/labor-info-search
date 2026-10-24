@@ -28,14 +28,14 @@ describe('app-info IPC contract', () => {
     }
   })
 
-  it('exposes only getAppInfo and validates responses before returning them', async () => {
+  it('validates app-info responses alongside fixed storage capabilities', async () => {
     const { createLaborApi } = await import('../../../src/shared/contracts')
     const requests: unknown[][] = []
     const api = createLaborApi(async (...args) => {
       requests.push(args)
       return { name: '劳动信息检索', version: '0.1.0', platform: 'win32' }
     })
-    expect(Object.keys(api)).toEqual(['getAppInfo'])
+    expect(Object.keys(api)).toEqual(['getAppInfo', 'history', 'settings'])
     await expect(api.getAppInfo()).resolves.toEqual({ name: '劳动信息检索', version: '0.1.0', platform: 'win32' })
     expect(requests).toEqual([['app:get-info', {}]])
     await expect(createLaborApi(async () => ({ name: 'spoofed' })).getAppInfo()).rejects.toThrow()

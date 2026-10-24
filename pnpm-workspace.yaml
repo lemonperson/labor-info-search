@@ -2,3 +2,5 @@ allowBuilds:
   electron: true
   esbuild: true
   electron-winstaller: false
+# Version 13 ships runtime-independent N-API binaries; no source rebuild is needed.
+  better-sqlite3: false
