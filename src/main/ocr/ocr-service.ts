@@ -151,6 +151,7 @@ export function createOcrService(modelDirectory?: string, workerFactory?: Worker
         if (signal.aborted) throw new OcrServiceError('cancelled')
         return normalizeResult(result.data)
       } catch (error) {
+        if (signal.aborted) throw new OcrServiceError('cancelled')
         if (error instanceof OcrServiceError) throw error
         throw new OcrServiceError('ocr-failed')
       } finally {

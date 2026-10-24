@@ -171,6 +171,39 @@ describe('OCR worker lifecycle', () => {
     expect(terminated).toBe(1)
   })
 
+  it('reports cancellation when worker termination rejects recognition first', async () => {
+    const { createOcrService } = await import('../../../src/main/ocr/ocr-service')
+    const path = await copyToTemporaryImage('package-label.png', 'png')
+    let started!: () => void
+    let rejectRecognition!: (error: Error) => void
+    const recognitionStarted = new Promise<void>(resolve => { started = resolve })
+    const service = createOcrService(undefined, async () => ({
+      recognize() {
+        return new Promise((_resolve, reject) => {
+          rejectRecognition = reject
+          started()
+        })
+      },
+      async terminate() { rejectRecognition(new Error('worker terminated')) }
+    }))
+    const controller = new AbortController()
+    const pending = service.recognizeImage(path, controller.signal)
+    await recognitionStarted
+    controller.abort()
+    await expect(pending).rejects.toMatchObject({ code: 'cancelled' })
+  })
+
+  it('keeps genuine non-abort recognition failures as OCR failures', async () => {
+    const { createOcrService } = await import('../../../src/main/ocr/ocr-service')
+    const path = await copyToTemporaryImage('package-label.png', 'png')
+    const service = createOcrService(undefined, async () => ({
+      async recognize() { throw new Error('recognition failed') },
+      async terminate() {}
+    }))
+    await expect(service.recognizeImage(path, new AbortController().signal)).rejects.toMatchObject({ code: 'ocr-failed' })
+    await service.shutdown()
+  })
+
   it('rejects bytes that do not match an allowed image signature', async () => {
     const path = join(tmpdir(), `labor-ocr-invalid-${crypto.randomUUID()}.png`)
     temporaryFiles.push(path)
