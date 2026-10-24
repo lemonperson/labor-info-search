@@ -65,3 +65,22 @@ Vitest, the Electron build, and E2E needed elevated temporary-file access becaus
 - Link resolver output and request data are validated on both renderer and main-process boundaries; cancellation aborts the active resolver.
 - One existing suite test remains skipped. The report does not claim a watched RED cycle because sandbox permissions prevented that initial check.
 - The eventual search invocation is intentionally downstream of this task; the confirmed input is ready for its consumer.
+
+## Review fix round 1/5 — 44px touch targets
+
+### RED
+
+Command: `pnpm test:e2e --grep "touch controls meet"`
+
+Result: failed as expected. The new 390px viewport assertion measured mode tabs at 111.3×36px, the text action at 77×40px, and the dialog close control at 39.6×39.6px.
+
+### GREEN
+
+Raised mode tabs and text actions to `min-height: 44px`; set the dialog close control to 44×44px. The first rerun caught the entrance animation's `scale(.99)`, which briefly reduced the close control to 43.6×43.6px. Removed that scale while retaining the subtle vertical entrance transition.
+
+- `pnpm test:e2e --grep "touch controls meet"` — pass, 1 test.
+- `pnpm vitest run tests/unit/renderer/intake-page.test.tsx tests/unit/renderer/subject-confirmation.test.tsx` — pass, 2 files / 5 tests.
+- `pnpm typecheck` — pass.
+- `pnpm lint` — pass.
+- `pnpm build` — pass.
+- `pnpm test:e2e` — pass, 8 tests. Normal and narrow viewport screenshots were regenerated and inspected; layout remains compact and no horizontal overflow appeared.

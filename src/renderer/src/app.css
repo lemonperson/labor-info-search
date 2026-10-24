@@ -34,7 +34,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .intake-shell h1 { margin: 0; max-width: 690px; color: var(--ink); font-size: clamp(30px, 4.3vw, 40px); line-height: 1.32; font-weight: 550; letter-spacing: -.045em; }
 .intro-copy { max-width: 625px; margin: 17px 0 30px; color: var(--subtle); font-size: 14px; line-height: 1.8; }
 .mode-switch { display: inline-flex; align-items: center; gap: 2px; padding: 4px; border-radius: 11px; background: var(--soft); }
-.mode-switch button { min-height: 36px; border: 0; border-radius: 8px; background: transparent; padding: 0 15px; color: var(--subtle); font-size: 13px; cursor: pointer; transition: color 140ms ease, background 140ms ease, box-shadow 140ms ease; }
+.mode-switch button { min-height: 44px; border: 0; border-radius: 8px; background: transparent; padding: 0 15px; color: var(--subtle); font-size: 13px; cursor: pointer; transition: color 140ms ease, background 140ms ease, box-shadow 140ms ease; }
 .mode-switch button.is-active { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgb(20 30 45 / 9%); }
 .intake-form { display: flex; align-items: stretch; gap: 9px; margin-top: 14px; padding: 7px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); box-shadow: 0 8px 24px rgb(28 41 56 / 5%); }
 .intake-form input, .intake-form textarea { min-width: 0; flex: 1; border: 0; background: transparent; padding: 10px 11px; color: var(--ink); font-size: 15px; }
@@ -46,7 +46,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .button-primary:disabled, .button-secondary:disabled { cursor: not-allowed; opacity: .55; }
 .intake-form > .button-primary { align-self: stretch; min-width: 124px; }
 .form-controls { display: flex; align-items: center; gap: 12px; padding: 0 5px 3px; }
-.text-action { min-height: 40px; border: 0; background: transparent; color: var(--accent); font-size: 13px; cursor: pointer; }
+.text-action { min-height: 44px; border: 0; background: transparent; color: var(--accent); font-size: 13px; cursor: pointer; }
 .text-action:hover { text-decoration: underline; }
 .helper-copy { display: flex; align-items: flex-start; gap: 9px; margin: 13px 3px 0; color: var(--subtle); font-size: 12px; line-height: 1.7; }
 .helper-mark { width: 6px; height: 6px; flex: 0 0 auto; margin-top: 6px; border-radius: 50%; background: var(--accent); }
@@ -66,7 +66,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .dialog-backdrop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 22px; background: rgb(22 31 42 / 28%); animation: fade-in 140ms ease both; }
 .confirm-dialog { position: relative; width: min(100%, 610px); max-height: min(86vh, 760px); overflow: auto; padding: 31px 34px 29px; border: 1px solid #e5e8ec; border-radius: 17px; background: var(--panel); box-shadow: 0 20px 58px rgb(18 28 40 / 18%); animation: rise-in 180ms ease both; }
-.dialog-close { position: absolute; top: 15px; right: 17px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: transparent; color: var(--subtle); font-size: 24px; cursor: pointer; }
+.dialog-close { position: absolute; top: 13px; right: 15px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--subtle); font-size: 24px; cursor: pointer; }
 .confirm-dialog .section-kicker { margin: 0 0 8px; }
 .confirm-dialog h2 { margin: 0; font-size: 23px; line-height: 1.35; font-weight: 560; letter-spacing: -.025em; }
 .dialog-intro { margin: 10px 0 20px; color: var(--subtle); font-size: 13px; line-height: 1.7; }
@@ -88,7 +88,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes rise-in { from { opacity: .75; transform: translateY(5px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes rise-in { from { opacity: .75; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 600px) {
   .app-topbar { height: 58px; padding: 0 19px; }
   .app-topnote { font-size: 10px; }

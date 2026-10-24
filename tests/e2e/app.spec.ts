@@ -95,6 +95,29 @@ test('input modes switch with keyboard, validate fields, and stay composed at na
   await expect(page.getByRole('button', { name: '选择截图' })).toBeVisible()
 })
 
+test('touch controls meet the 44px target in narrow mode', async () => {
+  const page = await desktop.firstWindow()
+  await page.setViewportSize({ width: 390, height: 844 })
+  const sizes: Array<{ target: string; width: number; height: number }> = []
+  const measure = async (target: string, locator: ReturnType<typeof page.getByRole>) => {
+    const { width, height } = await locator.evaluate(element => {
+      const rect = element.getBoundingClientRect()
+      return { width: rect.width, height: rect.height }
+    })
+    sizes.push({ target, width, height })
+  }
+
+  await measure('mode tab', page.getByRole('tab', { name: '企业名称' }))
+  await page.getByRole('tab', { name: '上传截图' }).click()
+  await measure('text action', page.getByRole('button', { name: '按文字继续' }))
+  await page.getByRole('tab', { name: '企业名称' }).click()
+  await page.getByRole('textbox', { name: '企业或品牌名称' }).fill('触控尺寸检查')
+  await page.getByRole('button', { name: '继续确认主体' }).click()
+  const close = page.getByRole('button', { name: '关闭主体确认' })
+  await measure('dialog close', close)
+  expect(sizes.filter(({ width, height }) => width < 44 || height < 44)).toEqual([])
+})
+
 test('a blocked product link stays in the app and offers screenshot and manual fallbacks', async () => {
   const page = await desktop.firstWindow()
   await page.getByRole('tab', { name: '商品链接' }).click()
