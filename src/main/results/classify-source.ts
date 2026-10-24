@@ -10,8 +10,9 @@ function hostnameOf(value: string): string | undefined {
 /** Classify solely from the enabled, explicit source registry and host metadata. */
 export function classifySource(url: string, publisher: string, registry: SourceRegistry): SourceClassification {
   const urlHost = hostnameOf(url)
-  const publisherHost = hostnameOf(publisher)
-  const hosts = [urlHost, publisherHost].filter((host): host is string => Boolean(host))
+  // Publisher is untrusted display text. Only the article URL can identify its host.
+  void publisher
+  const hosts = [urlHost].filter((host): host is string => Boolean(host))
   const entries = registry.sources.filter(({ enabled }) => enabled).map((entry) => ({
     entry, host: hostnameOf(entry.homepageUrl)
   })).filter((candidate): candidate is { entry: SourceRegistry['sources'][number]; host: string } => Boolean(candidate.host))

@@ -9,6 +9,7 @@ export const appInfoSchema = z.object({
 export const appInfoRequestSchema = z.object({}).strict()
 
 const nonBlankText = z.string().refine((value) => value.trim().length > 0, 'Must not be blank')
+const evidenceText = z.string().max(500).refine((value) => value.trim().length > 0, 'Must not be blank')
 const timestamp = z.iso.datetime({ offset: true })
 const webUrl = z.url({ protocol: /^https?$/ })
 const siteScope = z.string().regex(
@@ -53,7 +54,7 @@ export const sourceRecordSchema = z.object({
   accessedAt: timestamp,
   excerpt: z.string().max(1200),
   claimStatus: claimStatusSchema,
-  matchEvidence: z.array(nonBlankText).min(1),
+  matchEvidence: z.array(evidenceText).min(1).max(20),
   availability: z.enum(['available', 'unavailable', 'unknown']),
   relatedRecordIds: z.array(nonBlankText).optional(),
   /** Connector/query audit trail carried through normalization and deduplication. */

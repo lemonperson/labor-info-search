@@ -22,4 +22,10 @@ describe('normalizeRawResult', () => {
   it('preserves registry classification and never promotes social claims', () => {
     expect(normalizeRawResult({ ...raw, publisher: 'weibo.com', title: '企业回应，发展良好' }, subject).sourceType).toBe('other')
   })
+  it('sanitizes and bounds every match evidence item and caps the evidence array', () => {
+    const result = normalizeRawResult({ ...raw, matchEvidence: ['<b>据公开页面记载</b>\u202e', ...Array.from({ length: 24 }, (_, index) => `线索 ${index}`), 'x'.repeat(900)] }, subject)
+    expect(result.matchEvidence).toHaveLength(20)
+    expect(result.matchEvidence[0]).toBe('据公开页面记载')
+    expect(result.matchEvidence.every((item) => item.length <= 500 && !/[<>\u202e]/u.test(item))).toBe(true)
+  })
 })

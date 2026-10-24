@@ -12,7 +12,8 @@ export function normalizeRawResult(raw: SourceRecord, subject: CompanySubject, r
   const candidate = sourceRecordSchema.parse({
     ...raw,
     title: toSafeDisplayText(raw.title, 500),
-    excerpt: toSafeDisplayText(raw.excerpt, 1200)
+    excerpt: toSafeDisplayText(raw.excerpt, 1200),
+    matchEvidence: raw.matchEvidence.slice(0, 20).map((evidence) => toSafeDisplayText(evidence, 500))
   })
   const selectedSubject = companySubjectSchema.parse(subject)
   if (candidate.subjectId !== selectedSubject.id) throw new TypeError('Result subject mismatch')

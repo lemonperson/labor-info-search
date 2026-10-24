@@ -24,4 +24,8 @@ describe('classifySource', () => {
     expect(classifySource('https://unknown.example/a', 'Company says all is well', registry).sourceType).toBe('other')
     expect(classifySource('https://disabled.example.com/a', 'Publisher', registry).sourceType).toBe('other')
   })
+  it('does not allow untrusted publisher text to impersonate a configured host', () => {
+    expect(classifySource('https://unknown.example/article', 'court.gov.cn', registry).sourceType).toBe('other')
+    expect(classifySource('https://unknown.example/article', 'https://court.gov.cn/', registry).sourceType).toBe('other')
+  })
 })

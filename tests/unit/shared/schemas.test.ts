@@ -124,6 +124,12 @@ describe('domain schemas', () => {
     expect(sourceRecordSchema.safeParse({ ...record, excerpt: '文'.repeat(1201) }).success).toBe(false)
   })
 
+  it('bounds match evidence to 20 items of at most 500 characters each', () => {
+    expect(sourceRecordSchema.safeParse({ ...record, matchEvidence: ['证据'.repeat(250)] }).success).toBe(true)
+    expect(sourceRecordSchema.safeParse({ ...record, matchEvidence: ['证据'.repeat(251)] }).success).toBe(false)
+    expect(sourceRecordSchema.safeParse({ ...record, matchEvidence: Array.from({ length: 21 }, (_, i) => `线索${i}`) }).success).toBe(false)
+  })
+
   it.each(['publisher', 'accessedAt'] as const)('requires source %s', (field) => {
     const payload: Record<string, unknown> = { ...record }
     delete payload[field]
