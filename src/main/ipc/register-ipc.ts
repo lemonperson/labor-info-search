@@ -151,7 +151,7 @@ export function createSearchHandlers(service: SearchSessionService, sendProgress
       const session = await service.start(request.confirmedSubject, progress => {
         const parsed = searchProgressSchema.safeParse(progress)
         if (parsed.success) sendProgress?.(parsed.data)
-      })
+      }, request.sessionId)
       return searchSessionSchema.parse(session)
     },
     async [searchCancelSearchChannel](payload: unknown) {

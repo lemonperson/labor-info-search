@@ -49,9 +49,9 @@ export interface LaborApi {
     update(patch: Partial<AppSettings>): Promise<AppSettings>
   }
   search: {
-    start(input: ConfirmedSubjectInput): Promise<SearchSession>
+    start(input: ConfirmedSubjectInput, sessionId: string): Promise<SearchSession>
     cancel(sessionId: string): Promise<null>
-    onProgress(listener: (progress: SessionProgress) => void): () => void
+    onProgress(sessionId: string, listener: (progress: SessionProgress) => void): () => void
   }
   image: {
     pickAndRecognize(): Promise<Result<OcrCandidateResult, OcrError>>

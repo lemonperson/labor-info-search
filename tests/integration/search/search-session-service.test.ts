@@ -143,7 +143,7 @@ describe('search IPC lifetime', () => {
     const { createSearchHandlers } = await import('../../../src/main/ipc/register-ipc')
     const connector: SearchConnector = { id: 'empty', search: async () => ({ ok: true, records: [] }) }
     const handlers = createSearchHandlers(service([connector]))
-    const [left, right] = await Promise.all([handlers['search:start']({ confirmedSubject: input }), handlers['search:start']({ confirmedSubject: input })])
+    const [left, right] = await Promise.all([handlers['search:start']({ confirmedSubject: input, sessionId: '8d4576e0-f8ad-44db-a42a-000000000001' }), handlers['search:start']({ confirmedSubject: input, sessionId: '8d4576e0-f8ad-44db-a42a-000000000002' })])
     expect((left as { id: string }).id).not.toBe((right as { id: string }).id)
   })
 
@@ -157,5 +157,17 @@ describe('search IPC lifetime', () => {
     expect(() => checked({ sender: {} as never, senderFrame: mainFrame } as never, {})).toThrow('Untrusted IPC sender')
     expect(() => checked({ sender: webContents as never, senderFrame: {} as never } as never, {})).toThrow('Untrusted IPC sender')
     expect(calls).toBe(0)
+  })
+})
+
+
+describe('session phase ordering regression', () => {
+  it('emits preparing, searching, normalizing, saving, then complete exactly once', async () => {
+    const events: SessionProgress[] = []
+    const result = await service([{ id: 'empty', search: async () => ({ ok: true, records: [] }) }]).start(input, event => events.push(event))
+    const phaseTransitions = events.map(event => event.phase).filter((phase, index, all) => index === 0 || phase !== all[index - 1])
+    expect(phaseTransitions).toEqual(['preparing_queries', 'searching', 'normalizing', 'saving', 'complete'])
+    expect(events.filter(event => event.phase === 'complete')).toHaveLength(1)
+    expect(repository.getSession(result.id)?.status).toBe('completed')
   })
 })

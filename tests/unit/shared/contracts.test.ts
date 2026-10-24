@@ -146,16 +146,43 @@ describe('confirmed search preload contract', () => {
       subject: { id: 'subject-1', name: '示例制造有限公司', role: 'manufacturer', verification: 'user-confirmed', evidence: ['包装生产企业名称'] },
       selectedEvidence: ['包装生产企业名称'], verification: 'user-confirmed', origin: 'screenshot'
     }
-    await expect(api.search.start(confirmed)).resolves.toMatchObject({ id: 'session-1' })
-    await expect(api.search.cancel('session-1')).resolves.toBeNull()
-    await expect(api.search.start({ ...confirmed, verification: 'unverified' } as never)).rejects.toThrow()
-    expect(calls).toEqual([['search:start', { confirmedSubject: confirmed }], ['search:cancel', { sessionId: 'session-1' }]])
+    const sessionId = '8d4576e0-f8ad-44db-a42a-000000000001'
+    await expect(api.search.start(confirmed, sessionId)).resolves.toMatchObject({ id: 'session-1' })
+    await expect(api.search.cancel(sessionId)).resolves.toBeNull()
+    await expect(api.search.start({ ...confirmed, verification: 'unverified' } as never, sessionId)).rejects.toThrow()
+    expect(calls).toEqual([['search:start', { confirmedSubject: confirmed, sessionId }], ['search:cancel', { sessionId }]])
     const received: unknown[] = []
-    const dispose = api.search.onProgress(value => received.push(value))
-    publish?.({ sessionId: 's1', phase: 'searching', completed: 1, total: 8 })
-    publish?.({ sessionId: 's1', phase: 'searching', completed: 9, total: 8 })
-    expect(received).toEqual([{ sessionId: 's1', phase: 'searching', completed: 1, total: 8 }])
+    const dispose = api.search.onProgress(sessionId, value => received.push(value))
+    publish?.({ sessionId, phase: 'searching', completed: 1, total: 8 })
+    publish?.({ sessionId, phase: 'searching', completed: 9, total: 8 })
+    expect(received).toEqual([{ sessionId, phase: 'searching', completed: 1, total: 8 }])
     dispose()
     expect(removed).toBe(true)
+  })
+})
+
+describe('search progress session isolation', () => {
+  it('delivers each progress event only to the matching session listener and disposes independently', async () => {
+    const { createLaborApi } = await import('../../../src/shared/contracts')
+    const subscriptions = new Set<(payload: unknown) => void>()
+    const api = createLaborApi(async () => null, (_channel, listener) => {
+      subscriptions.add(listener)
+      return () => { subscriptions.delete(listener) }
+    })
+    const receivedA: string[] = []
+    const receivedB: string[] = []
+    const subscribe = api.search.onProgress
+    const disposeA = subscribe('8d4576e0-f8ad-44db-a42a-000000000001', event => receivedA.push(event.sessionId))
+    const disposeB = subscribe('8d4576e0-f8ad-44db-a42a-000000000002', event => receivedB.push(event.sessionId))
+    for (const listener of subscriptions) {
+      listener({ sessionId: '8d4576e0-f8ad-44db-a42a-000000000001', phase: 'searching', completed: 1, total: 8 })
+      listener({ sessionId: '8d4576e0-f8ad-44db-a42a-000000000002', phase: 'searching', completed: 1, total: 8 })
+    }
+    expect(receivedA).toEqual(['8d4576e0-f8ad-44db-a42a-000000000001'])
+    expect(receivedB).toEqual(['8d4576e0-f8ad-44db-a42a-000000000002'])
+    disposeA()
+    expect(subscriptions).toHaveLength(1)
+    disposeB()
+    expect(subscriptions).toHaveLength(0)
   })
 })

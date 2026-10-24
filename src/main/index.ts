@@ -26,7 +26,10 @@ void app.whenReady().then(async () => {
   database = openDatabase(join(app.getPath('userData'), 'labor-information.sqlite'))
   const searches = new SearchRepository(database)
   const settings = new SettingsRepository(database)
-  const searchSessions = new SearchSessionService(new SearchService([new BingRssConnector()]), searches)
+  const connectors = !app.isPackaged && process.env.LABOR_SEARCH_E2E_FIXTURE === 'enabled'
+    ? [new (await import('./search/e2e-fixture-connector')).E2ESearchFixtureConnector()]
+    : [new BingRssConnector()]
+  const searchSessions = new SearchSessionService(new SearchService(connectors), searches)
   await registerSearchIpc(() => mainWindow, searchSessions)
   const handlers = {
     [appInfoContract.channel]: createAppInfoHandler(() => ({

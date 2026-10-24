@@ -23,9 +23,10 @@ export class SearchSessionService {
     private readonly options: { createId?: () => string; now?: () => string } = {}
   ) {}
 
-  async start(input: ConfirmedSubjectInput, progressPort: (progress: SessionProgress) => void): Promise<SearchSession> {
+  async start(input: ConfirmedSubjectInput, progressPort: (progress: SessionProgress) => void, requestedSessionId?: string): Promise<SearchSession> {
     const confirmed = confirmedSubjectInputSchema.parse(input)
-    const sessionId = this.options.createId?.() ?? randomUUID()
+    const sessionId = requestedSessionId ?? this.options.createId?.() ?? randomUUID()
+    if (this.controllers.has(sessionId)) throw new TypeError('Search session ID is already active')
     const startedAt = this.options.now?.() ?? new Date().toISOString()
     const controller = new AbortController()
     this.controllers.set(sessionId, controller)
@@ -38,11 +39,9 @@ export class SearchSessionService {
         evidence: [...new Set([...confirmed.subject.evidence, ...confirmed.selectedEvidence])],
         verification: confirmed.verification
       }
-      emit({ phase: 'preparing_queries', completed: 0, total: 0 })
       const queries = buildLaborQueries(subject)
       emit({ phase: 'preparing_queries', completed: queries.length, total: queries.length })
-      const batch = await this.search.run(subject, queries, (event: SearchProgress) => emit(event), controller.signal)
-      emit({ phase: 'normalizing', completed: 0, total: batch.records.length })
+      const batch = await this.search.run(subject, queries, (event: SearchProgress) => { if (event.phase !== 'complete') emit(event) }, controller.signal)
       const normalized = batch.records.flatMap((record) => {
         try { return [normalizeRawResult(record, subject)] } catch { return [] }
       })

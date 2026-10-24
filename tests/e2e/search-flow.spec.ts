@@ -6,6 +6,7 @@ test.beforeEach(async () => {
   const env = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
   delete env.NO_COLOR
   delete env.ELECTRON_RUN_AS_NODE
+  env.LABOR_SEARCH_E2E_FIXTURE = 'enabled'
   desktop = await electron.launch({ args: ['.'], env })
 })
 test.afterEach(async () => { await desktop?.close() })
@@ -23,18 +24,21 @@ test('runs a best-effort session only after explicit subject confirmation', asyn
 
     const result = await page.evaluate(async () => {
       const progress: Array<{ sessionId: string; phase: string }> = []
-      const dispose = window.laborApi.search.onProgress(event => progress.push({ sessionId: event.sessionId, phase: event.phase }))
+      const sessionId = crypto.randomUUID()
+      const dispose = window.laborApi.search.onProgress(sessionId, event => progress.push({ sessionId: event.sessionId, phase: event.phase }))
       try {
         const subject = {
           subject: { id: 'unknown:青禾劳动检索端到端测试公司', name: '青禾劳动检索端到端测试公司', role: 'unknown' as const,
             verification: 'user-confirmed' as const, evidence: ['手动输入：青禾劳动检索端到端测试公司'] },
           selectedEvidence: ['手动输入：青禾劳动检索端到端测试公司'], verification: 'user-confirmed' as const, origin: 'company-name' as const
         }
-        const session = await window.laborApi.search.start(subject)
+        const session = await window.laborApi.search.start(subject, sessionId)
         return { session, progress }
       } finally { dispose() }
     })
-    expect(result.session).toMatchObject({ inputType: 'company-name', subject: { name: '青禾劳动检索端到端测试公司' }, status: expect.stringMatching(/completed|partial|failed|cancelled/) })
+    expect(result.session).toMatchObject({ inputType: 'company-name', subject: { name: '青禾劳动检索端到端测试公司' }, status: 'completed' })
+    expect(result.session.records).toHaveLength(1)
+    expect(result.session.connectorRuns).toEqual([{ connectorId: 'e2e-fixture', status: 'completed' }])
     expect(result.session.records.every(record => record.subjectId === result.session.subject.id)).toBe(true)
     expect(result.progress.map(event => event.phase)).toEqual(expect.arrayContaining(['preparing_queries', 'searching', 'normalizing', 'saving', 'complete']))
     expect(result.progress.every(event => event.sessionId === result.session.id)).toBe(true)
@@ -48,10 +52,10 @@ test('runs a best-effort session only after explicit subject confirmation', asyn
   const page = await desktop.firstWindow()
   const rejected = await page.evaluate(async () => {
     try {
-      await window.laborApi.search.start({} as never)
+      await window.laborApi.search.start({} as never, crypto.randomUUID())
       return false
     } catch { return true }
   })
   expect(rejected).toBe(true)
-  expect(await page.evaluate(() => window.laborApi.search.cancel('unknown-session'))).toBeNull()
+  expect(await page.evaluate(() => window.laborApi.search.cancel(crypto.randomUUID()))).toBeNull()
 })

@@ -193,5 +193,6 @@ export const searchProgressSchema = z.object({
   queryId: nonBlankText.optional(),
   status: z.enum(['pending', 'running', 'completed', 'partial', 'cancelled', 'failed']).optional()
 }).strict().refine(({ completed, total }) => completed <= total, { message: 'Progress cannot exceed total', path: ['completed'] })
-export const searchStartRequestSchema = z.object({ confirmedSubject: confirmedSubjectInputSchema }).strict()
-export const searchCancelRequestSchema = z.object({ sessionId: nonBlankText }).strict()
+export const searchSessionIdSchema = z.uuid()
+export const searchStartRequestSchema = z.object({ confirmedSubject: confirmedSubjectInputSchema, sessionId: searchSessionIdSchema }).strict()
+export const searchCancelRequestSchema = z.object({ sessionId: searchSessionIdSchema }).strict()

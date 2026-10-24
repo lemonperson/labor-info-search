@@ -2,7 +2,7 @@ import { z } from 'zod'
 import {
   appInfoRequestSchema, appInfoSchema, appSettingsSchema, historyGetResponseSchema,
   historyIdRequestSchema, historyListRequestSchema, historyListResponseSchema, settingsPatchSchema,
-  storageEmptyRequestSchema, storageMutationResponseSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema, searchProgressSchema, searchSessionSchema, searchStartRequestSchema, searchCancelRequestSchema,
+  storageEmptyRequestSchema, storageMutationResponseSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema, searchProgressSchema, searchSessionSchema, searchStartRequestSchema, searchCancelRequestSchema, searchSessionIdSchema,
   marketplaceResolveRequestSchema, productResolutionSchema
 } from './schemas'
 import type { AppInfo, AppSettings, LaborApi, OcrProgress, SessionProgress, ConfirmedSubjectInput } from './types'
@@ -65,18 +65,19 @@ export function createLaborApi(invoke: InvokeLabor, subscribe: Subscribe = () =>
       update: (patch: Partial<AppSettings>) => call('settings:update', patch)
     }),
     search: Object.freeze({
-      async start(confirmedSubject: ConfirmedSubjectInput) {
-        const request = searchContracts['search:start'].request.parse({ confirmedSubject })
+      async start(confirmedSubject: ConfirmedSubjectInput, sessionId: string) {
+        const request = searchContracts['search:start'].request.parse({ confirmedSubject, sessionId })
         return searchContracts['search:start'].response.parse(await invoke('search:start', request))
       },
       async cancel(sessionId: string) {
         const request = searchContracts['search:cancel'].request.parse({ sessionId })
         return searchContracts['search:cancel'].response.parse(await invoke('search:cancel', request))
       },
-      onProgress(listener: (progress: SessionProgress) => void) {
+      onProgress(sessionId: string, listener: (progress: SessionProgress) => void) {
+        const selectedSessionId = searchSessionIdSchema.parse(sessionId)
         return subscribe('search:progress', (payload) => {
           const parsed = searchProgressSchema.safeParse(payload)
-          if (parsed.success) listener(parsed.data)
+          if (parsed.success && parsed.data.sessionId === selectedSessionId) listener(parsed.data)
         })
       }
     }),

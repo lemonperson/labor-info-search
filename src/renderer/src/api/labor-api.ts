@@ -20,9 +20,9 @@ export const laborApi: LaborApi = {
     update: async patch => window.laborApi.settings.update(patch)
   },
   search: {
-    start: async input => window.laborApi.search.start(input),
+    start: async (input, sessionId) => window.laborApi.search.start(input, sessionId),
     cancel: async sessionId => window.laborApi.search.cancel(sessionId),
-    onProgress: listener => window.laborApi.search.onProgress(listener)
+    onProgress: (sessionId, listener) => window.laborApi.search.onProgress(sessionId, listener)
   },
   image: {
     pickAndRecognize: async () => window.laborApi.image.pickAndRecognize(),
