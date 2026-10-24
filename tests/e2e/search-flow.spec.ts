@@ -20,7 +20,35 @@ test('runs a best-effort session only after explicit subject confirmation', asyn
     await page.getByRole('textbox', { name: '企业或品牌名称' }).fill('青禾劳动检索端到端测试公司')
     await page.getByRole('button', { name: '继续确认主体' }).click()
     await page.getByRole('button', { name: '确认主体', exact: true }).click()
-    await expect(page.getByText('已确认主体：青禾劳动检索端到端测试公司')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '青禾劳动检索端到端测试公司 的检索结果' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /劳动争议信息测试记录/ })).toBeVisible()
+    await page.getByRole('group', { name: '按来源类型筛选' }).getByLabel('其他来源').check()
+    await page.getByRole('button', { name: /劳动争议信息测试记录/ }).click()
+    await expect(page.getByRole('main', { name: '来源详情' })).toContainText('https://example.com/labor-search-fixture')
+    await page.getByRole('button', { name: '返回检索结果' }).click()
+    await expect(page.getByRole('group', { name: '按来源类型筛选' }).getByLabel('其他来源')).toBeChecked()
+    await page.getByRole('button', { name: '在浏览器中继续搜索' }).click()
+    await expect(page.getByRole('dialog', { name: '在浏览器中打开这些检索词？' })).toContainText('www.bing.com')
+    await desktop.evaluate(({ shell }) => {
+      const state = globalThis as typeof globalThis & { task11ExternalOpens: string[] }
+      state.task11ExternalOpens = []
+      shell.openExternal = async url => { state.task11ExternalOpens.push(url) }
+    })
+    await page.getByRole('button', { name: '取消' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(await desktop.evaluate(() => (globalThis as typeof globalThis & { task11ExternalOpens: string[] }).task11ExternalOpens)).toEqual([])
+    await page.getByRole('button', { name: '在浏览器中继续搜索' }).click()
+    await page.getByRole('button', { name: '确认并打开浏览器' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    const openedUrls = await desktop.evaluate(() => (globalThis as typeof globalThis & { task11ExternalOpens: string[] }).task11ExternalOpens)
+    expect(openedUrls).toHaveLength(1)
+    expect(new URL(openedUrls[0]).hostname).toBe('www.bing.com')
+    expect(new URL(openedUrls[0]).protocol).toBe('https:')
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.screenshot({ path: 'test-results/task11-results-wide.png', fullPage: true })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(page.getByRole('heading', { name: '青禾劳动检索端到端测试公司 的检索结果' })).toBeVisible()
+    await page.screenshot({ path: 'test-results/task11-results-narrow.png', fullPage: true })
 
     const result = await page.evaluate(async () => {
       const progress: Array<{ sessionId: string; phase: string }> = []

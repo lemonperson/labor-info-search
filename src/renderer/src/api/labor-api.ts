@@ -32,5 +32,9 @@ export const laborApi: LaborApi = {
   marketplace: {
     resolve: rawUrl => window.laborApi.marketplace.resolve(rawUrl),
     cancel: async () => window.laborApi.marketplace.cancel()
+  },
+  browser: {
+    preview: async (provider, reason, queries) => window.laborApi.browser.preview(provider, reason, queries),
+    openConfirmed: async previewId => window.laborApi.browser.openConfirmed(previewId)
   }
 }

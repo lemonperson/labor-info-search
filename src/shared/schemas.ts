@@ -196,3 +196,21 @@ export const searchProgressSchema = z.object({
 export const searchSessionIdSchema = z.uuid()
 export const searchStartRequestSchema = z.object({ confirmedSubject: confirmedSubjectInputSchema, sessionId: searchSessionIdSchema }).strict()
 export const searchCancelRequestSchema = z.object({ sessionId: searchSessionIdSchema }).strict()
+export const browserFallbackPreviewRequestSchema = z.object({
+  provider: z.literal('bing'),
+  reason: z.string().min(1).max(240),
+  queries: z.array(searchQuerySchema).min(1).max(30)
+}).strict()
+export const browserFallbackPreviewSchema = z.object({
+  previewId: z.uuid(),
+  provider: z.literal('bing'),
+  hostname: z.literal('www.bing.com'),
+  reason: z.string().min(1).max(240),
+  queries: z.array(z.string().min(1).max(1000)).max(30),
+  expiresAt: timestamp
+}).strict()
+export const browserOpenConfirmedRequestSchema = z.object({ previewId: z.uuid() }).strict()
+export const browserOpenResponseSchema = z.discriminatedUnion('ok', [
+  z.object({ ok: z.literal(true), value: z.undefined() }).strict(),
+  z.object({ ok: z.literal(false), error: z.enum(['preview-not-found', 'preview-expired', 'browser-open-failed']) }).strict()
+])

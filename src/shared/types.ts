@@ -62,6 +62,10 @@ export interface LaborApi {
     resolve(rawUrl: string): Promise<ProductResolution>
     cancel(): Promise<null>
   }
+  browser: {
+    preview(provider: 'bing', reason: string, queries: SearchQuery[]): Promise<BrowserFallbackPreview>
+    openConfirmed(previewId: string): Promise<Result<void, BrowserOpenError>>
+  }
 }
 
 export type OcrCandidateResult = z.infer<typeof ocrCandidateResultSchema>
@@ -99,10 +103,13 @@ export interface SearchProgress {
   status?: SearchBatch['status']
 }
 export interface BrowserFallbackPreview {
+  previewId: string
   provider: 'bing'
   hostname: 'www.bing.com'
+  reason: string
   queries: string[]
-  urls: string[]
+  expiresAt: string
 }
+export type BrowserOpenError = 'preview-not-found' | 'preview-expired' | 'browser-open-failed'
 export type ConfirmedSubjectInput = z.infer<typeof confirmedSubjectInputSchema>
 export type SessionProgress = z.infer<typeof searchProgressSchema>

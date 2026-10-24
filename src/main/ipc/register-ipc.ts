@@ -7,6 +7,9 @@ import { resolveProductLink } from '../marketplace/link-resolver'
 import type { ProductResolution, SessionProgress } from '../../shared/types'
 import { searchProgressSchema, searchSessionSchema, searchStartRequestSchema, searchCancelRequestSchema } from '../../shared/schemas'
 import type { SearchSessionService } from '../search/search-session-service'
+import { randomUUID } from 'node:crypto'
+import { browserFallbackPreviewRequestSchema, browserFallbackPreviewSchema, browserOpenConfirmedRequestSchema, browserOpenResponseSchema } from '../../shared/schemas'
+import { buildBrowserFallback } from '../search/browser-fallback'
 
 const pickChannel = 'image:pick-and-recognize' as const
 const cancelChannel = 'image:cancel' as const
@@ -166,6 +169,63 @@ export async function registerSearchIpc(getWindow: () => BrowserWindow | null, s
   const { ipcMain } = await import('electron')
   const handlers = createSearchHandlers(service, progress => getWindow()?.webContents.send(searchProgressChannel, progress))
   for (const [channel, handler] of Object.entries(handlers)) {
+    ipcMain.handle(channel, createSenderCheckedHandler(getWindow, handler))
+  }
+}
+
+const browserPreviewChannel = 'browser:preview' as const
+const browserOpenChannel = 'browser:open-confirmed' as const
+const browserPreviewTtlMs = 5 * 60 * 1000
+
+type BrowserFallbackDependencies = {
+  openExternal(url: string): Promise<void>
+  now?: () => number
+  createId?: () => string
+}
+
+export function createBrowserFallbackHandlers(dependencies: BrowserFallbackDependencies) {
+  const now = dependencies.now ?? Date.now
+  const createId = dependencies.createId ?? randomUUID
+  const pending = new Map<string, { url: string; expiresAt: number }>()
+  return {
+    async [browserPreviewChannel](payload: unknown) {
+      const request = browserFallbackPreviewRequestSchema.parse(payload)
+      const built = buildBrowserFallback(request.provider, request.queries)
+      const previewId = createId()
+      const currentTime = now()
+      for (const [id, preview] of pending) if (currentTime >= preview.expiresAt) pending.delete(id)
+      const expiresAt = currentTime + browserPreviewTtlMs
+      const url = built.urls[0]
+      if (!url) throw new Error('Browser preview requires a search query')
+      pending.set(previewId, { url, expiresAt })
+      return browserFallbackPreviewSchema.parse({
+        previewId, provider: built.provider, hostname: built.hostname, reason: request.reason,
+        queries: [built.queries[0]], expiresAt: new Date(expiresAt).toISOString()
+      })
+    },
+    async [browserOpenChannel](payload: unknown) {
+      const { previewId } = browserOpenConfirmedRequestSchema.parse(payload)
+      const pendingPreview = pending.get(previewId)
+      pending.delete(previewId)
+      if (!pendingPreview) return browserOpenResponseSchema.parse({ ok: false, error: 'preview-not-found' })
+      if (now() >= pendingPreview.expiresAt) return browserOpenResponseSchema.parse({ ok: false, error: 'preview-expired' })
+      try {
+        await dependencies.openExternal(pendingPreview.url)
+        return browserOpenResponseSchema.parse({ ok: true, value: undefined })
+      } catch {
+        return browserOpenResponseSchema.parse({ ok: false, error: 'browser-open-failed' })
+      }
+    }
+  }
+}
+
+export async function registerBrowserIpc(getWindow: () => BrowserWindow | null): Promise<void> {
+  const { ipcMain, shell } = await import('electron')
+  const handlers = createBrowserFallbackHandlers({ openExternal: url => shell.openExternal(url) })
+  const entries: Array<[string, (payload: unknown) => unknown]> = [
+    [browserPreviewChannel, handlers[browserPreviewChannel]], [browserOpenChannel, handlers[browserOpenChannel]]
+  ]
+  for (const [channel, handler] of entries) {
     ipcMain.handle(channel, createSenderCheckedHandler(getWindow, handler))
   }
 }

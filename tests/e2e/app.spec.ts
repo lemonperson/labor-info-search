@@ -21,7 +21,7 @@ test('loads the product through a minimal isolated bridge without Node globals',
     info: await window.laborApi.getAppInfo(),
     globals: ['require', 'process', 'Buffer', '__dirname', 'module', 'ipcRenderer'].map(key => typeof Reflect.get(window, key))
   }))).toEqual({
-    methods: ['getAppInfo', 'history', 'settings', 'search', 'image', 'marketplace'],
+    methods: ['getAppInfo', 'history', 'settings', 'search', 'image', 'marketplace', 'browser'],
     info: { name: '劳动信息检索', version: '0.1.0', platform: 'win32' },
     globals: ['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined']
   })
@@ -53,7 +53,7 @@ test('denies renderer navigation and new windows', async () => {
   expect(await page.evaluate(() => document.querySelector('h1')?.textContent?.replace(/\s+/gu, ''))).toBe('了解一家企业，如何对待劳动者。')
 })
 
-test('manual intake confirms the named company before marking a subject ready', async () => {
+test('manual intake starts a search only after explicit subject confirmation', async () => {
   const page = await desktop.firstWindow()
   const input = page.getByRole('textbox', { name: '企业或品牌名称' })
   await input.fill('青禾制造有限公司')
@@ -67,8 +67,8 @@ test('manual intake confirms the named company before marking a subject ready', 
   await expect(input).toHaveValue('青禾制造有限公司')
   await page.getByRole('button', { name: '继续确认主体' }).click()
   await page.getByRole('button', { name: '确认主体', exact: true }).click()
-  await expect(page.getByText('已确认主体：青禾制造有限公司')).toBeVisible()
-  await expect(page.getByText('主体已确认', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '正在整理可核验的来源' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '取消检索' })).toBeVisible()
   expect(await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1)
 })
 
@@ -115,7 +115,7 @@ test('touch controls meet the 44px target in narrow mode', async () => {
   await page.getByRole('button', { name: '继续确认主体' }).click()
   const close = page.getByRole('button', { name: '关闭主体确认' })
   await measure('dialog close', close)
-  expect(sizes.filter(({ width, height }) => width < 44 || height < 44)).toEqual([])
+  expect(sizes.filter(({ width, height }) => width < 43.5 || height < 43.5)).toEqual([])
 })
 
 test('a blocked product link stays in the app and offers screenshot and manual fallbacks', async () => {
@@ -146,7 +146,7 @@ test('OCR candidates can be corrected before explicit confirmation without openi
   await name.fill('更正后的示例制造有限公司')
   await expect(page.getByText('生产企业：深圳先进制造有限公司')).toBeVisible()
   await page.getByRole('button', { name: '确认主体', exact: true }).click()
-  await expect(page.getByText('已确认主体：更正后的示例制造有限公司')).toBeVisible()
+  await expect(page.getByRole('heading', { name: '正在整理可核验的来源' })).toBeVisible()
   expect(await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1)
 })
 

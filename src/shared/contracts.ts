@@ -3,9 +3,10 @@ import {
   appInfoRequestSchema, appInfoSchema, appSettingsSchema, historyGetResponseSchema,
   historyIdRequestSchema, historyListRequestSchema, historyListResponseSchema, settingsPatchSchema,
   storageEmptyRequestSchema, storageMutationResponseSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema, searchProgressSchema, searchSessionSchema, searchStartRequestSchema, searchCancelRequestSchema, searchSessionIdSchema,
-  marketplaceResolveRequestSchema, productResolutionSchema
+  marketplaceResolveRequestSchema, productResolutionSchema, browserFallbackPreviewRequestSchema,
+  browserFallbackPreviewSchema, browserOpenConfirmedRequestSchema, browserOpenResponseSchema
 } from './schemas'
-import type { AppInfo, AppSettings, LaborApi, OcrProgress, SessionProgress, ConfirmedSubjectInput } from './types'
+import type { AppInfo, AppSettings, LaborApi, OcrProgress, SessionProgress, ConfirmedSubjectInput, SearchQuery } from './types'
 
 export const appInfoContract = {
   channel: 'app:get-info', request: appInfoRequestSchema, response: appInfoSchema
@@ -39,7 +40,12 @@ type StorageChannel = keyof typeof storageContracts
 type ImageChannel = keyof typeof imageContracts
 type MarketplaceChannel = keyof typeof marketplaceContracts
 type SearchChannel = keyof typeof searchContracts
-type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel | ImageChannel | MarketplaceChannel | SearchChannel, request: unknown) => Promise<unknown>
+const browserContracts = {
+  'browser:preview': { request: browserFallbackPreviewRequestSchema, response: browserFallbackPreviewSchema },
+  'browser:open-confirmed': { request: browserOpenConfirmedRequestSchema, response: browserOpenResponseSchema }
+} as const
+type BrowserChannel = keyof typeof browserContracts
+type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel | ImageChannel | MarketplaceChannel | SearchChannel | BrowserChannel, request: unknown) => Promise<unknown>
 type Subscribe = (channel: 'image:progress' | 'search:progress', listener: (payload: unknown) => void) => () => void
 
 // The renderer receives only fixed capabilities, never raw IPC or database access.
@@ -107,6 +113,16 @@ export function createLaborApi(invoke: InvokeLabor, subscribe: Subscribe = () =>
       async cancel() {
         const request = marketplaceContracts['marketplace:cancel'].request.parse({})
         return marketplaceContracts['marketplace:cancel'].response.parse(await invoke('marketplace:cancel', request))
+      }
+    }),
+    browser: Object.freeze({
+      async preview(provider: 'bing', reason: string, queries: SearchQuery[]) {
+        const request = browserContracts['browser:preview'].request.parse({ provider, reason, queries })
+        return browserContracts['browser:preview'].response.parse(await invoke('browser:preview', request))
+      },
+      async openConfirmed(previewId: string) {
+        const request = browserContracts['browser:open-confirmed'].request.parse({ previewId })
+        return browserContracts['browser:open-confirmed'].response.parse(await invoke('browser:open-confirmed', request))
       }
     })
   })

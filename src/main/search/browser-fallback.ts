@@ -1,5 +1,5 @@
 import { searchQuerySchema } from '../../shared/schemas'
-import type { BrowserFallbackPreview, SearchQuery } from '../../shared/types'
+import type { SearchQuery } from '../../shared/types'
 
 export function formatSearchQuery(query: SearchQuery): string {
   const parsed = searchQuerySchema.parse(query)
@@ -9,7 +9,7 @@ export function formatSearchQuery(query: SearchQuery): string {
 }
 
 /** Pure preview; opening URLs requires a separate user-confirmed action. */
-export function buildBrowserFallback(provider: 'bing', queries: SearchQuery[]): BrowserFallbackPreview {
+export function buildBrowserFallback(provider: 'bing', queries: SearchQuery[]) {
   if (provider !== 'bing') throw new TypeError('Unsupported search provider')
   const text = queries.map(formatSearchQuery)
   return {

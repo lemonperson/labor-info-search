@@ -8,7 +8,7 @@ describe('history and settings IPC capabilities', () => {
   it('exposes only fixed capabilities and validates requests before invoking', async () => {
     let calls = 0
     const api = createLaborApi(async () => { calls++; return [] })
-    expect(Object.keys(api)).toEqual(['getAppInfo', 'history', 'settings', 'search', 'image', 'marketplace'])
+    expect(Object.keys(api)).toEqual(['getAppInfo', 'history', 'settings', 'search', 'image', 'marketplace', 'browser'])
     expect(Object.keys(api.history)).toEqual(['list', 'get', 'delete', 'clear'])
     expect(Object.keys(api.settings)).toEqual(['get', 'update'])
     expect(Object.isFrozen(api.history)).toBe(true)
