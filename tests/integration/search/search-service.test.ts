@@ -19,7 +19,7 @@ describe('search orchestration', () => {
     const batch = await new SearchService([success, failed]).run(subject, queries.slice(0, 1), (event) => events.push(event), new AbortController().signal)
     expect(batch.status).toBe('partial')
     expect(batch.coverage).toBe('best-effort')
-    expect(batch.records).toEqual([record])
+    expect(batch.records).toEqual([{ ...record, queryIds: ['q0'], connectorIds: ['good'] }])
     expect(batch.connectorRuns).toEqual([
       { connectorId: 'good', status: 'completed' },
       { connectorId: 'bad', status: 'failed', message: 'blocked_or_changed' }
@@ -84,7 +84,7 @@ describe('search orchestration', () => {
     controller.abort()
     const batch = await running
     expect(batch.status).toBe('cancelled')
-    expect(batch.records).toEqual([record])
+    expect(batch.records).toEqual([{ ...record, queryIds: ['q0'], connectorIds: ['mixed'] }])
     expect(batch.queryRuns.map((run) => run.status)).toEqual(['completed', 'cancelled', 'cancelled', 'cancelled'])
     expect(signals.slice(1).every((signal) => signal.aborted)).toBe(true)
     expect(calls).toBe(3)

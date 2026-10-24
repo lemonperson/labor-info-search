@@ -5,7 +5,10 @@ import { openDatabase, type DatabaseHandle } from './database/database'
 import { SearchRepository } from './database/search-repository'
 import { SettingsRepository } from './database/settings-repository'
 import { createMainWindow } from './window'
-import { registerImageIpc, registerMarketplaceIpc } from './ipc/register-ipc'
+import { registerImageIpc, registerMarketplaceIpc, registerSearchIpc } from './ipc/register-ipc'
+import { SearchService } from './search/search-service'
+import { BingRssConnector } from './search/connectors/bing-rss'
+import { SearchSessionService } from './search/search-session-service'
 import { configureOcrModelDirectory, shutdownOcrWorker } from './ocr/ocr-service'
 
 let mainWindow: BrowserWindow | null = null
@@ -23,6 +26,8 @@ void app.whenReady().then(async () => {
   database = openDatabase(join(app.getPath('userData'), 'labor-information.sqlite'))
   const searches = new SearchRepository(database)
   const settings = new SettingsRepository(database)
+  const searchSessions = new SearchSessionService(new SearchService([new BingRssConnector()]), searches)
+  await registerSearchIpc(() => mainWindow, searchSessions)
   const handlers = {
     [appInfoContract.channel]: createAppInfoHandler(() => ({
       name: '劳动信息检索', version: app.getVersion(), platform: process.platform

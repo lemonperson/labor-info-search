@@ -21,7 +21,7 @@ test('loads the product through a minimal isolated bridge without Node globals',
     info: await window.laborApi.getAppInfo(),
     globals: ['require', 'process', 'Buffer', '__dirname', 'module', 'ipcRenderer'].map(key => typeof Reflect.get(window, key))
   }))).toEqual({
-    methods: ['getAppInfo', 'history', 'settings', 'image', 'marketplace'],
+    methods: ['getAppInfo', 'history', 'settings', 'search', 'image', 'marketplace'],
     info: { name: '劳动信息检索', version: '0.1.0', platform: 'win32' },
     globals: ['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined']
   })

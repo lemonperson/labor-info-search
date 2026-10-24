@@ -78,7 +78,7 @@ export class SearchService {
         : successes === jobs.length ? 'completed' : successes ? 'partial' : 'failed'
     const batch: SearchBatch = {
       subject: selected, queries: validated,
-      records: results.flatMap((result) => result.ok ? result.records : []),
+      records: results.flatMap((result, index) => result.ok ? result.records.map((record) => ({ ...record, queryIds: [...new Set([...(record.queryIds ?? []), jobs[index].query.id])], connectorIds: [...new Set([...(record.connectorIds ?? []), jobs[index].connector.id])] })) : []),
       status, coverage: 'best-effort', connectorRuns, queryRuns
     }
     emit({ phase: 'complete', completed, total: jobs.length, status })

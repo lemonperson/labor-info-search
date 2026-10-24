@@ -19,6 +19,11 @@ export const laborApi: LaborApi = {
     get: async () => window.laborApi.settings.get(),
     update: async patch => window.laborApi.settings.update(patch)
   },
+  search: {
+    start: async input => window.laborApi.search.start(input),
+    cancel: async sessionId => window.laborApi.search.cancel(sessionId),
+    onProgress: listener => window.laborApi.search.onProgress(listener)
+  },
   image: {
     pickAndRecognize: async () => window.laborApi.image.pickAndRecognize(),
     cancel: async () => window.laborApi.image.cancel(),

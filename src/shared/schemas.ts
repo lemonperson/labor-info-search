@@ -175,3 +175,23 @@ export const productResolutionSchema = z.object({
   status: z.enum(['resolved', 'partial', 'blocked', 'unsupported'])
 }).strict()
 export const marketplaceResolveRequestSchema = z.object({ rawUrl: z.string().max(2048) }).strict()
+
+export const confirmedSubjectInputSchema = z.object({
+  subject: companySubjectSchema,
+  selectedEvidence: z.array(nonBlankText).max(100),
+  verification: subjectVerificationSchema,
+  origin: z.enum(['company-name', 'product-link', 'screenshot'])
+}).strict().refine(({ subject, verification }) => subject.verification === verification,
+  { message: 'Confirmed subject verification must match its evidence', path: ['verification'] })
+
+export const searchProgressSchema = z.object({
+  sessionId: nonBlankText,
+  phase: z.enum(['preparing_queries', 'searching', 'normalizing', 'saving', 'complete']),
+  completed: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+  connectorId: nonBlankText.optional(),
+  queryId: nonBlankText.optional(),
+  status: z.enum(['pending', 'running', 'completed', 'partial', 'cancelled', 'failed']).optional()
+}).strict().refine(({ completed, total }) => completed <= total, { message: 'Progress cannot exceed total', path: ['completed'] })
+export const searchStartRequestSchema = z.object({ confirmedSubject: confirmedSubjectInputSchema }).strict()
+export const searchCancelRequestSchema = z.object({ sessionId: nonBlankText }).strict()

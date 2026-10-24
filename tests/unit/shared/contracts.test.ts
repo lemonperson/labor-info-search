@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { ConfirmedSubjectInput } from '../../../src/shared/types'
 
 // These tests catch a widened IPC contract or missing validation in the preload bridge.
 describe('app-info IPC contract', () => {
@@ -35,7 +36,7 @@ describe('app-info IPC contract', () => {
       requests.push(args)
       return { name: '劳动信息检索', version: '0.1.0', platform: 'win32' }
     })
-    expect(Object.keys(api)).toEqual(['getAppInfo', 'history', 'settings', 'image', 'marketplace'])
+    expect(Object.keys(api)).toEqual(['getAppInfo', 'history', 'settings', 'search', 'image', 'marketplace'])
     await expect(api.getAppInfo()).resolves.toEqual({ name: '劳动信息检索', version: '0.1.0', platform: 'win32' })
     expect(requests).toEqual([['app:get-info', {}]])
     await expect(createLaborApi(async () => ({ name: 'spoofed' })).getAppInfo()).rejects.toThrow()
@@ -123,5 +124,38 @@ describe('marketplace resolver preload contract', () => {
     await expect(api.marketplace.resolve('x'.repeat(2049))).rejects.toThrow()
     const invalid = createLaborApi(async () => ({ ...result, finalUrl: 'x'.repeat(2049) }))
     await expect(invalid.marketplace.resolve('https://item.jd.com/1.html')).rejects.toThrow()
+  })
+})
+
+describe('confirmed search preload contract', () => {
+  it('validates the confirmed input and response and removes disposed progress listeners', async () => {
+    const { createLaborApi } = await import('../../../src/shared/contracts')
+    const { session } = await import('../../integration/database/fixtures')
+    const calls: unknown[][] = []
+    let publish: ((payload: unknown) => void) | undefined
+    let removed = false
+    const api = createLaborApi(async (...args) => {
+      calls.push(args)
+      return args[0] === 'search:start' ? session() : null
+    }, (channel, listener) => {
+      expect(channel).toBe('search:progress')
+      publish = listener
+      return () => { removed = true }
+    })
+    const confirmed: ConfirmedSubjectInput = {
+      subject: { id: 'subject-1', name: '示例制造有限公司', role: 'manufacturer', verification: 'user-confirmed', evidence: ['包装生产企业名称'] },
+      selectedEvidence: ['包装生产企业名称'], verification: 'user-confirmed', origin: 'screenshot'
+    }
+    await expect(api.search.start(confirmed)).resolves.toMatchObject({ id: 'session-1' })
+    await expect(api.search.cancel('session-1')).resolves.toBeNull()
+    await expect(api.search.start({ ...confirmed, verification: 'unverified' } as never)).rejects.toThrow()
+    expect(calls).toEqual([['search:start', { confirmedSubject: confirmed }], ['search:cancel', { sessionId: 'session-1' }]])
+    const received: unknown[] = []
+    const dispose = api.search.onProgress(value => received.push(value))
+    publish?.({ sessionId: 's1', phase: 'searching', completed: 1, total: 8 })
+    publish?.({ sessionId: 's1', phase: 'searching', completed: 9, total: 8 })
+    expect(received).toEqual([{ sessionId: 's1', phase: 'searching', completed: 1, total: 8 }])
+    dispose()
+    expect(removed).toBe(true)
   })
 })

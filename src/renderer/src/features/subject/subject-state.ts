@@ -1,12 +1,7 @@
-import type { CompanySubject, EntityCandidate, SubjectRole } from '../../../../shared/types'
+import type { ConfirmedSubjectInput, EntityCandidate, SubjectRole } from '../../../../shared/types'
+export type { ConfirmedSubjectInput } from '../../../../shared/types'
 
 export type SubjectOrigin = 'company-name' | 'product-link' | 'screenshot'
-export type ConfirmedSubjectInput = {
-  subject: CompanySubject
-  selectedEvidence: string[]
-  verification: 'verified' | 'user-confirmed' | 'unverified'
-  origin: SubjectOrigin
-}
 
 export const roleLabels: Record<SubjectRole, string> = {
   brand: '品牌', 'brand-owner': '品牌所有方', 'store-operator': '店铺经营者', 'parent-company': '母公司',

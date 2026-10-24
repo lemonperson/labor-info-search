@@ -2,7 +2,7 @@ import type { z } from 'zod'
 import type {
   appInfoSchema, appSettingsSchema, claimStatusSchema, companySubjectSchema, connectorRunSchema,
   entityCandidateSchema, eventGroupSchema, searchQuerySchema, searchSessionSchema,
-  sourceRecordSchema, sourceRegistryEntrySchema, sourceRegistrySchema, sourceTypeSchema,
+  sourceRecordSchema, sourceRegistryEntrySchema, sourceRegistrySchema, sourceTypeSchema, confirmedSubjectInputSchema, searchProgressSchema,
   subjectRoleSchema, subjectVerificationSchema, ocrErrorSchema, ocrCandidateResultSchema, ocrProgressSchema, ocrTextLineSchema, ocrTextWordSchema,
   productResolutionSchema, marketplaceEvidenceSchema, marketplacePlatformSchema
 } from './schemas'
@@ -47,6 +47,11 @@ export interface LaborApi {
   settings: {
     get(): Promise<AppSettings>
     update(patch: Partial<AppSettings>): Promise<AppSettings>
+  }
+  search: {
+    start(input: ConfirmedSubjectInput): Promise<SearchSession>
+    cancel(sessionId: string): Promise<null>
+    onProgress(listener: (progress: SessionProgress) => void): () => void
   }
   image: {
     pickAndRecognize(): Promise<Result<OcrCandidateResult, OcrError>>
@@ -99,3 +104,5 @@ export interface BrowserFallbackPreview {
   queries: string[]
   urls: string[]
 }
+export type ConfirmedSubjectInput = z.infer<typeof confirmedSubjectInputSchema>
+export type SessionProgress = z.infer<typeof searchProgressSchema>

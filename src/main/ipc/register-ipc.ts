@@ -4,7 +4,9 @@ import type { OcrProgress, Result } from '../../shared/types'
 import { extractEntityCandidates } from '../identity/candidate-extractor'
 import { recognizeImage, type OcrTextResult } from '../ocr/ocr-service'
 import { resolveProductLink } from '../marketplace/link-resolver'
-import type { ProductResolution } from '../../shared/types'
+import type { ProductResolution, SessionProgress } from '../../shared/types'
+import { searchProgressSchema, searchSessionSchema, searchStartRequestSchema, searchCancelRequestSchema } from '../../shared/schemas'
+import type { SearchSessionService } from '../search/search-session-service'
 
 const pickChannel = 'image:pick-and-recognize' as const
 const cancelChannel = 'image:cancel' as const
@@ -88,13 +90,7 @@ export async function registerImageIpc(getWindow: () => BrowserWindow | null): P
   })
 
   for (const [channel, handler] of Object.entries(handlers)) {
-    ipcMain.handle(channel, (event, payload: unknown) => {
-      const window = getWindow()
-      if (!window || event.sender !== window.webContents || event.senderFrame !== event.sender.mainFrame) {
-        throw new Error('Untrusted IPC sender')
-      }
-      return handler(payload)
-    })
+    ipcMain.handle(channel, createSenderCheckedHandler(getWindow, handler))
   }
 }
 
@@ -130,12 +126,46 @@ export async function registerMarketplaceIpc(getWindow: () => BrowserWindow | nu
   const { ipcMain } = await import('electron')
   const handlers = createMarketplaceHandlers()
   for (const [channel, handler] of Object.entries(handlers)) {
-    ipcMain.handle(channel, (event, payload: unknown) => {
-      const window = getWindow()
-      if (!window || event.sender !== window.webContents || event.senderFrame !== event.sender.mainFrame) {
-        throw new Error('Untrusted IPC sender')
-      }
-      return handler(payload)
-    })
+    ipcMain.handle(channel, createSenderCheckedHandler(getWindow, handler))
+  }
+}
+
+
+export function createSenderCheckedHandler<T>(getWindow: () => BrowserWindow | null, handler: (payload: unknown) => T | Promise<T>) {
+  return (event: { sender: BrowserWindow['webContents']; senderFrame: BrowserWindow['webContents']['mainFrame'] | null }, payload: unknown) => {
+    const window = getWindow()
+    if (!window || event.sender !== window.webContents || event.senderFrame !== event.sender.mainFrame) {
+      throw new Error('Untrusted IPC sender')
+    }
+    return handler(payload)
+  }
+}
+const searchStartChannel = 'search:start' as const
+const searchCancelSearchChannel = 'search:cancel' as const
+const searchProgressChannel = 'search:progress' as const
+
+export function createSearchHandlers(service: SearchSessionService, sendProgress?: (progress: SessionProgress) => void) {
+  return {
+    async [searchStartChannel](payload: unknown) {
+      const request = searchStartRequestSchema.parse(payload)
+      const session = await service.start(request.confirmedSubject, progress => {
+        const parsed = searchProgressSchema.safeParse(progress)
+        if (parsed.success) sendProgress?.(parsed.data)
+      })
+      return searchSessionSchema.parse(session)
+    },
+    async [searchCancelSearchChannel](payload: unknown) {
+      const { sessionId } = searchCancelRequestSchema.parse(payload)
+      await service.cancel(sessionId)
+      return storageMutationResponseSchema.parse(null)
+    }
+  }
+}
+
+export async function registerSearchIpc(getWindow: () => BrowserWindow | null, service: SearchSessionService): Promise<void> {
+  const { ipcMain } = await import('electron')
+  const handlers = createSearchHandlers(service, progress => getWindow()?.webContents.send(searchProgressChannel, progress))
+  for (const [channel, handler] of Object.entries(handlers)) {
+    ipcMain.handle(channel, createSenderCheckedHandler(getWindow, handler))
   }
 }

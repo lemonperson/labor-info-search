@@ -2,10 +2,10 @@ import { z } from 'zod'
 import {
   appInfoRequestSchema, appInfoSchema, appSettingsSchema, historyGetResponseSchema,
   historyIdRequestSchema, historyListRequestSchema, historyListResponseSchema, settingsPatchSchema,
-  storageEmptyRequestSchema, storageMutationResponseSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema,
+  storageEmptyRequestSchema, storageMutationResponseSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema, searchProgressSchema, searchSessionSchema, searchStartRequestSchema, searchCancelRequestSchema,
   marketplaceResolveRequestSchema, productResolutionSchema
 } from './schemas'
-import type { AppInfo, AppSettings, LaborApi, OcrProgress } from './types'
+import type { AppInfo, AppSettings, LaborApi, OcrProgress, SessionProgress, ConfirmedSubjectInput } from './types'
 
 export const appInfoContract = {
   channel: 'app:get-info', request: appInfoRequestSchema, response: appInfoSchema
@@ -25,6 +25,11 @@ const imageContracts = {
   'image:cancel': { request: ocrRequestSchema, response: storageMutationResponseSchema }
 } as const
 
+const searchContracts = {
+  'search:start': { request: searchStartRequestSchema, response: searchSessionSchema },
+  'search:cancel': { request: searchCancelRequestSchema, response: storageMutationResponseSchema }
+} as const
+
 const marketplaceContracts = {
   'marketplace:resolve': { request: marketplaceResolveRequestSchema, response: productResolutionSchema },
   'marketplace:cancel': { request: ocrRequestSchema, response: storageMutationResponseSchema }
@@ -33,8 +38,9 @@ const marketplaceContracts = {
 type StorageChannel = keyof typeof storageContracts
 type ImageChannel = keyof typeof imageContracts
 type MarketplaceChannel = keyof typeof marketplaceContracts
-type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel | ImageChannel | MarketplaceChannel, request: unknown) => Promise<unknown>
-type Subscribe = (channel: 'image:progress', listener: (payload: unknown) => void) => () => void
+type SearchChannel = keyof typeof searchContracts
+type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel | ImageChannel | MarketplaceChannel | SearchChannel, request: unknown) => Promise<unknown>
+type Subscribe = (channel: 'image:progress' | 'search:progress', listener: (payload: unknown) => void) => () => void
 
 // The renderer receives only fixed capabilities, never raw IPC or database access.
 export function createLaborApi(invoke: InvokeLabor, subscribe: Subscribe = () => () => {}) : LaborApi {
@@ -57,6 +63,22 @@ export function createLaborApi(invoke: InvokeLabor, subscribe: Subscribe = () =>
     settings: Object.freeze({
       get: () => call('settings:get', {}),
       update: (patch: Partial<AppSettings>) => call('settings:update', patch)
+    }),
+    search: Object.freeze({
+      async start(confirmedSubject: ConfirmedSubjectInput) {
+        const request = searchContracts['search:start'].request.parse({ confirmedSubject })
+        return searchContracts['search:start'].response.parse(await invoke('search:start', request))
+      },
+      async cancel(sessionId: string) {
+        const request = searchContracts['search:cancel'].request.parse({ sessionId })
+        return searchContracts['search:cancel'].response.parse(await invoke('search:cancel', request))
+      },
+      onProgress(listener: (progress: SessionProgress) => void) {
+        return subscribe('search:progress', (payload) => {
+          const parsed = searchProgressSchema.safeParse(payload)
+          if (parsed.success) listener(parsed.data)
+        })
+      }
     }),
     image: Object.freeze({
       async pickAndRecognize() {
