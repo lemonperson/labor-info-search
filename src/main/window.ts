@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { fileURLToPath } from 'node:url'
 
 export function createMainWindow(): BrowserWindow {
@@ -25,7 +25,7 @@ export function createMainWindow(): BrowserWindow {
   window.webContents.on('will-redirect', event => event.preventDefault())
   window.once('ready-to-show', () => window.show())
 
-  if (process.env.ELECTRON_RENDERER_URL) {
+  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) {
     void window.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
     void window.loadFile(fileURLToPath(new URL('../renderer/index.html', import.meta.url)))
