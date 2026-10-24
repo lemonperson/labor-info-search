@@ -35,7 +35,7 @@ describe('app-info IPC contract', () => {
       requests.push(args)
       return { name: '劳动信息检索', version: '0.1.0', platform: 'win32' }
     })
-    expect(Object.keys(api)).toEqual(['getAppInfo', 'history', 'settings', 'image'])
+    expect(Object.keys(api)).toEqual(['getAppInfo', 'history', 'settings', 'image', 'marketplace'])
     await expect(api.getAppInfo()).resolves.toEqual({ name: '劳动信息检索', version: '0.1.0', platform: 'win32' })
     expect(requests).toEqual([['app:get-info', {}]])
     await expect(createLaborApi(async () => ({ name: 'spoofed' })).getAppInfo()).rejects.toThrow()
@@ -108,5 +108,20 @@ describe('image OCR progress bridge', () => {
     expect(received).toEqual([{ status: 'recognizing text', progress: 0.5 }])
     unsubscribe()
     expect(unsubscribed).toBe(true)
+  })
+})
+
+describe('marketplace resolver preload contract', () => {
+  it('validates URL requests and bounded resolver responses through the narrow capability', async () => {
+    const { createLaborApi } = await import('../../../src/shared/contracts')
+    const requests: unknown[][] = []
+    const result = { platform: 'jd', productTitle: '商品', finalUrl: 'https://item.jd.com/1.html', candidates: [], evidence: [], warnings: [], status: 'partial' }
+    const api = createLaborApi(async (...args) => { requests.push(args); return args[0] === 'marketplace:resolve' ? result : null })
+    await expect(api.marketplace.resolve('https://item.jd.com/1.html')).resolves.toEqual(result)
+    await expect(api.marketplace.cancel()).resolves.toBeNull()
+    expect(requests).toEqual([['marketplace:resolve', { rawUrl: 'https://item.jd.com/1.html' }], ['marketplace:cancel', {}]])
+    await expect(api.marketplace.resolve('x'.repeat(2049))).rejects.toThrow()
+    const invalid = createLaborApi(async () => ({ ...result, finalUrl: 'x'.repeat(2049) }))
+    await expect(invalid.marketplace.resolve('https://item.jd.com/1.html')).rejects.toThrow()
   })
 })

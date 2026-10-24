@@ -1,8 +1,10 @@
 import type { BrowserWindow } from 'electron'
-import { ocrProgressSchema, ocrRequestSchema, ocrResultSchema } from '../../shared/schemas'
+import { marketplaceResolveRequestSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema, productResolutionSchema, storageMutationResponseSchema } from '../../shared/schemas'
 import type { OcrProgress, Result } from '../../shared/types'
 import { extractEntityCandidates } from '../identity/candidate-extractor'
 import { recognizeImage, type OcrTextResult } from '../ocr/ocr-service'
+import { resolveProductLink } from '../marketplace/link-resolver'
+import type { ProductResolution } from '../../shared/types'
 
 const pickChannel = 'image:pick-and-recognize' as const
 const cancelChannel = 'image:cancel' as const
@@ -85,6 +87,48 @@ export async function registerImageIpc(getWindow: () => BrowserWindow | null): P
     }
   })
 
+  for (const [channel, handler] of Object.entries(handlers)) {
+    ipcMain.handle(channel, (event, payload: unknown) => {
+      const window = getWindow()
+      if (!window || event.sender !== window.webContents || event.senderFrame !== event.sender.mainFrame) {
+        throw new Error('Untrusted IPC sender')
+      }
+      return handler(payload)
+    })
+  }
+}
+
+const marketplaceResolveChannel = 'marketplace:resolve' as const
+const marketplaceCancelChannel = 'marketplace:cancel' as const
+type MarketplaceHandlerDependencies = {
+  resolve(url: string, signal: AbortSignal): Promise<ProductResolution>
+}
+
+export function createMarketplaceHandlers(dependencies: MarketplaceHandlerDependencies = { resolve: resolveProductLink }) {
+  let activeController: AbortController | undefined
+  return {
+    async [marketplaceResolveChannel](payload: unknown) {
+      const { rawUrl } = marketplaceResolveRequestSchema.parse(payload)
+      if (activeController) activeController.abort()
+      const controller = new AbortController()
+      activeController = controller
+      try {
+        return productResolutionSchema.parse(await dependencies.resolve(rawUrl, controller.signal))
+      } finally {
+        if (activeController === controller) activeController = undefined
+      }
+    },
+    async [marketplaceCancelChannel](payload: unknown) {
+      ocrRequestSchema.parse(payload)
+      activeController?.abort()
+      return storageMutationResponseSchema.parse(null)
+    }
+  }
+}
+
+export async function registerMarketplaceIpc(getWindow: () => BrowserWindow | null): Promise<void> {
+  const { ipcMain } = await import('electron')
+  const handlers = createMarketplaceHandlers()
   for (const [channel, handler] of Object.entries(handlers)) {
     ipcMain.handle(channel, (event, payload: unknown) => {
       const window = getWindow()

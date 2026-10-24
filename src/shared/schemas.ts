@@ -149,3 +149,21 @@ export const ocrResultSchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(false), error: ocrErrorSchema }).strict()
 ])
 export const ocrRequestSchema = z.object({}).strict()
+
+export const marketplacePlatformSchema = z.enum(['taobao', 'jd', 'douyin', 'pinduoduo', 'unknown'])
+export const marketplaceEvidenceSchema = z.object({
+  platform: marketplacePlatformSchema,
+  source: z.enum(['metadata', 'json-ld', 'visible-label']),
+  field: z.string().min(1).max(120),
+  excerpt: z.string().max(500)
+}).strict()
+export const productResolutionSchema = z.object({
+  platform: marketplacePlatformSchema,
+  productTitle: z.string().max(500),
+  finalUrl: z.string().max(2048),
+  candidates: z.array(entityCandidateSchema).max(100),
+  evidence: z.array(marketplaceEvidenceSchema).max(200),
+  warnings: z.array(z.string().max(500)).max(30),
+  status: z.enum(['resolved', 'partial', 'blocked', 'unsupported'])
+}).strict()
+export const marketplaceResolveRequestSchema = z.object({ rawUrl: z.string().max(2048) }).strict()

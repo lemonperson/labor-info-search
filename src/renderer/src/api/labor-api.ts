@@ -23,5 +23,9 @@ export const laborApi: LaborApi = {
     pickAndRecognize: async () => window.laborApi.image.pickAndRecognize(),
     cancel: async () => window.laborApi.image.cancel(),
     onProgress: listener => window.laborApi.image.onProgress(listener)
+  },
+  marketplace: {
+    resolve: rawUrl => window.laborApi.marketplace.resolve(rawUrl),
+    cancel: async () => window.laborApi.marketplace.cancel()
   }
 }

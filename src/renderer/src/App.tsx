@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { laborApi } from './api/labor-api'
+import { IntakePage } from './features/intake/IntakePage'
 
 export function App() {
   const [status, setStatus] = useState('正在启动…')
@@ -14,10 +15,8 @@ export function App() {
     return () => { active = false }
   }, [])
 
-  return (
-    <main className="app-surface">
-      <h1>劳动信息检索</h1>
-      <p role="status" aria-live="polite">{status}</p>
-    </main>
-  )
+  return <>
+    <IntakePage />
+    <div className="app-status" role="status" aria-live="polite">{status}</div>
+  </>
 }

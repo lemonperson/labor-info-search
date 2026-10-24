@@ -2,7 +2,8 @@ import { z } from 'zod'
 import {
   appInfoRequestSchema, appInfoSchema, appSettingsSchema, historyGetResponseSchema,
   historyIdRequestSchema, historyListRequestSchema, historyListResponseSchema, settingsPatchSchema,
-  storageEmptyRequestSchema, storageMutationResponseSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema
+  storageEmptyRequestSchema, storageMutationResponseSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema,
+  marketplaceResolveRequestSchema, productResolutionSchema
 } from './schemas'
 import type { AppInfo, AppSettings, LaborApi, OcrProgress } from './types'
 
@@ -24,9 +25,15 @@ const imageContracts = {
   'image:cancel': { request: ocrRequestSchema, response: storageMutationResponseSchema }
 } as const
 
+const marketplaceContracts = {
+  'marketplace:resolve': { request: marketplaceResolveRequestSchema, response: productResolutionSchema },
+  'marketplace:cancel': { request: ocrRequestSchema, response: storageMutationResponseSchema }
+} as const
+
 type StorageChannel = keyof typeof storageContracts
 type ImageChannel = keyof typeof imageContracts
-type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel | ImageChannel, request: unknown) => Promise<unknown>
+type MarketplaceChannel = keyof typeof marketplaceContracts
+type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel | ImageChannel | MarketplaceChannel, request: unknown) => Promise<unknown>
 type Subscribe = (channel: 'image:progress', listener: (payload: unknown) => void) => () => void
 
 // The renderer receives only fixed capabilities, never raw IPC or database access.
@@ -67,6 +74,16 @@ export function createLaborApi(invoke: InvokeLabor, subscribe: Subscribe = () =>
           const parsed = ocrProgressSchema.safeParse(payload)
           if (parsed.success) listener(parsed.data)
         })
+      }
+    }),
+    marketplace: Object.freeze({
+      async resolve(rawUrl: string) {
+        const request = marketplaceContracts['marketplace:resolve'].request.parse({ rawUrl })
+        return marketplaceContracts['marketplace:resolve'].response.parse(await invoke('marketplace:resolve', request))
+      },
+      async cancel() {
+        const request = marketplaceContracts['marketplace:cancel'].request.parse({})
+        return marketplaceContracts['marketplace:cancel'].response.parse(await invoke('marketplace:cancel', request))
       }
     })
   })

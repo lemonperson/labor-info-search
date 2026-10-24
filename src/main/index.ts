@@ -5,7 +5,7 @@ import { openDatabase, type DatabaseHandle } from './database/database'
 import { SearchRepository } from './database/search-repository'
 import { SettingsRepository } from './database/settings-repository'
 import { createMainWindow } from './window'
-import { registerImageIpc } from './ipc/register-ipc'
+import { registerImageIpc, registerMarketplaceIpc } from './ipc/register-ipc'
 import { configureOcrModelDirectory, shutdownOcrWorker } from './ocr/ocr-service'
 
 let mainWindow: BrowserWindow | null = null
@@ -19,6 +19,7 @@ function openMainWindow(): void {
 void app.whenReady().then(async () => {
   configureOcrModelDirectory(app.isPackaged ? join(process.resourcesPath, 'ocr') : join(app.getAppPath(), 'resources', 'ocr'))
   await registerImageIpc(() => mainWindow)
+  await registerMarketplaceIpc(() => mainWindow)
   database = openDatabase(join(app.getPath('userData'), 'labor-information.sqlite'))
   const searches = new SearchRepository(database)
   const settings = new SettingsRepository(database)

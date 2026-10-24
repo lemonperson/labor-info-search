@@ -3,7 +3,8 @@ import type {
   appInfoSchema, appSettingsSchema, claimStatusSchema, companySubjectSchema, connectorRunSchema,
   entityCandidateSchema, eventGroupSchema, searchQuerySchema, searchSessionSchema,
   sourceRecordSchema, sourceRegistryEntrySchema, sourceRegistrySchema, sourceTypeSchema,
-  subjectRoleSchema, subjectVerificationSchema, ocrErrorSchema, ocrCandidateResultSchema, ocrProgressSchema, ocrTextLineSchema, ocrTextWordSchema
+  subjectRoleSchema, subjectVerificationSchema, ocrErrorSchema, ocrCandidateResultSchema, ocrProgressSchema, ocrTextLineSchema, ocrTextWordSchema,
+  productResolutionSchema, marketplaceEvidenceSchema, marketplacePlatformSchema
 } from './schemas'
 
 export type AppSettings = z.infer<typeof appSettingsSchema>
@@ -43,6 +44,10 @@ export interface LaborApi {
     cancel(): Promise<null>
     onProgress(listener: (progress: OcrProgress) => void): () => void
   }
+  marketplace: {
+    resolve(rawUrl: string): Promise<ProductResolution>
+    cancel(): Promise<null>
+  }
 }
 
 export type OcrCandidateResult = z.infer<typeof ocrCandidateResultSchema>
@@ -50,6 +55,9 @@ export type OcrError = z.infer<typeof ocrErrorSchema>
 export type OcrProgress = z.infer<typeof ocrProgressSchema>
 export type OcrTextLine = z.infer<typeof ocrTextLineSchema>
 export type OcrTextWord = z.infer<typeof ocrTextWordSchema>
+export type ProductResolution = z.infer<typeof productResolutionSchema>
+export type MarketplaceEvidence = z.infer<typeof marketplaceEvidenceSchema>
+export type MarketplacePlatform = z.infer<typeof marketplacePlatformSchema>
 
 export type ConnectorFailureCode = 'blocked_or_changed' | 'malformed_response' | 'network_error' | 'timeout' | 'cancelled' | 'connector_error'
 export interface SearchQueryRun {
