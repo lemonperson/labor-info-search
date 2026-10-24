@@ -1,4 +1,14 @@
 {
   "version": 1,
-  "sources": []
+  "sources": [
+    {
+      "id": "bing-rss",
+      "name": "Bing RSS（尽力检索，覆盖不完整，接口可能变化）",
+      "sourceType": "other",
+      "homepageUrl": "https://www.bing.com/",
+      "enabled": true,
+      "requestsPerMinute": 12,
+      "cacheTtlSeconds": 0
+    }
+  ]
 }

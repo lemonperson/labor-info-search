@@ -5,12 +5,13 @@ import { isIP, type LookupFunction } from 'node:net'
 
 /** Callers may tighten these limits, but cannot raise the security ceilings. */
 export interface SafeFetchOptions {
+  signal?: AbortSignal
   timeoutMs?: number
   maxResponseBytes?: number
   maxRedirects?: number
 }
 export type SafeFetchErrorCode =
-  | 'unsafe-url' | 'invalid-options' | 'dns-error' | 'network-error' | 'timeout'
+  | 'cancelled' | 'unsafe-url' | 'invalid-options' | 'dns-error' | 'network-error' | 'timeout'
   | 'too-many-redirects' | 'response-too-large' | 'unsupported-content-type'
   | 'unsupported-encoding' | 'http-error' | 'invalid-redirect'
 export type SafeFetchResult =
@@ -19,7 +20,7 @@ export type SafeFetchResult =
 
 const limits = { timeoutMs: 10_000, maxResponseBytes: 2 * 1024 * 1024, maxRedirects: 5 }
 const redirectStatuses = new Set([301, 302, 303, 307, 308])
-const textTypes = new Set(['text/html', 'text/plain', 'application/xhtml+xml', 'application/json'])
+const textTypes = new Set(['text/html', 'text/plain', 'application/xhtml+xml', 'application/json', 'application/rss+xml', 'application/xml', 'text/xml'])
 class FetchFailure extends Error {
   constructor(readonly code: SafeFetchErrorCode) { super(code) }
 }
@@ -80,7 +81,7 @@ function requestHop(url: URL, target: { address: string; family: number }, maxBy
     const request = transport.request(url, {
       method: 'GET', agent: false, lookup, family: target.family,
       signal, maxHeaderSize: 16 * 1024,
-      headers: { Accept: 'text/html, text/plain, application/xhtml+xml, application/json', 'Accept-Encoding': 'identity' }
+      headers: { Accept: [...textTypes].join(', '), 'Accept-Encoding': 'identity' }
     }, (response) => {
       response.on('error', reject)
       const stop = (code: SafeFetchErrorCode) => { reject(new FetchFailure(code)); response.destroy() }
@@ -124,7 +125,13 @@ export async function safeFetchText(url: URL, options: SafeFetchOptions): Promis
     if (!Number.isSafeInteger(config[key]) || config[key] > limits[key] ||
       config[key] < (key === 'maxRedirects' ? 0 : 1)) return { ok: false, error: { code: 'invalid-options' } }
   }
+  if (options.signal?.aborted) return { ok: false, error: { code: 'cancelled' } }
   const controller = new AbortController()
+  let cancel!: () => void
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    cancel = () => { reject(new FetchFailure('cancelled')); controller.abort() }
+    options.signal?.addEventListener('abort', cancel, { once: true })
+  })
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => { controller.abort(); reject(new FetchFailure('timeout')) }, config.timeoutMs)
@@ -143,8 +150,8 @@ export async function safeFetchText(url: URL, options: SafeFetchOptions): Promis
       catch { fail('invalid-redirect') }
     }
   }
-  try { return await Promise.race([run(), timeout]) }
+  try { return await Promise.race([run(), timeout, cancelled]) }
   catch (error) {
-    return { ok: false, error: { code: controller.signal.aborted ? 'timeout' : error instanceof FetchFailure ? error.code : 'network-error' } }
-  } finally { clearTimeout(timer) }
+    return { ok: false, error: { code: options.signal?.aborted ? 'cancelled' : controller.signal.aborted ? 'timeout' : error instanceof FetchFailure ? error.code : 'network-error' } }
+  } finally { clearTimeout(timer); options.signal?.removeEventListener('abort', cancel) }
 }

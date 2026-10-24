@@ -39,3 +39,35 @@ export interface LaborApi {
     update(patch: Partial<AppSettings>): Promise<AppSettings>
   }
 }
+
+export type ConnectorFailureCode = 'blocked_or_changed' | 'malformed_response' | 'network_error' | 'timeout' | 'cancelled' | 'connector_error'
+export interface SearchQueryRun {
+  connectorId: string
+  queryId: string
+  status: 'completed' | 'failed' | 'cancelled'
+  errorCode?: ConnectorFailureCode
+}
+export interface SearchBatch {
+  subject: CompanySubject
+  queries: SearchQuery[]
+  records: SourceRecord[]
+  status: 'completed' | 'partial' | 'failed' | 'cancelled'
+  /** Completion describes scheduled work, never comprehensive search coverage. */
+  coverage: 'best-effort'
+  connectorRuns: ConnectorRun[]
+  queryRuns: SearchQueryRun[]
+}
+export interface SearchProgress {
+  phase: 'searching' | 'complete'
+  completed: number
+  total: number
+  connectorId?: string
+  queryId?: string
+  status?: SearchBatch['status']
+}
+export interface BrowserFallbackPreview {
+  provider: 'bing'
+  hostname: 'www.bing.com'
+  queries: string[]
+  urls: string[]
+}

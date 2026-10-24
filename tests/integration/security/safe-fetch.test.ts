@@ -169,3 +169,44 @@ it('allows callers to disable redirects', async () => {
   expect(await safeFetchText(new URL(base), { maxRedirects: 0 })).toMatchObject(failure('too-many-redirects'))
   expect(requests).toHaveLength(1)
 })
+
+it.each(['application/rss+xml', 'application/xml', 'text/xml'])('accepts bounded explicit XML MIME %s', async (contentType) => {
+  handler = (_request, response) => { response.writeHead(200, { 'Content-Type': contentType }); response.end('<rss/>') }
+  expect(await safeFetchText(new URL(base), {})).toMatchObject({ ok: true, text: '<rss/>', contentType })
+  expect(await safeFetchText(new URL(base), { maxResponseBytes: 3 })).toMatchObject(failure('response-too-large'))
+})
+it('retains XML redirect/private-address and encoding protections', async () => {
+  handler = (_request, response) => { response.writeHead(302, { Location: 'http://127.0.0.1/private', 'Content-Type': 'application/rss+xml' }); response.end() }
+  expect(await safeFetchText(new URL(base), {})).toMatchObject(failure('unsafe-url'))
+  handler = (_request, response) => { response.writeHead(200, { 'Content-Type': 'application/rss+xml', 'Content-Encoding': 'gzip' }); response.end('compressed') }
+  expect(await safeFetchText(new URL(base), {})).toMatchObject(failure('unsupported-encoding'))
+  handler = (_request, response) => { response.writeHead(200, { 'Content-Type': 'application/binary+xml' }); response.end('binary') }
+  expect(await safeFetchText(new URL(base), {})).toMatchObject(failure('unsupported-content-type'))
+})
+it('returns cancelled before DNS or dialing for an aborted caller', async () => {
+  expect(await safeFetchText(new URL(base), { signal: AbortSignal.abort() })).toMatchObject(failure('cancelled'))
+  expect(dialed).toEqual([])
+})
+it('cancels an in-flight response and closes its socket', async () => {
+  const controller = new AbortController()
+  let closed = false
+  handler = (_request, response) => {
+    response.once('close', () => { closed = true })
+    response.writeHead(200, { 'Content-Type': 'application/rss+xml' })
+    response.write('<rss>')
+    setImmediate(() => controller.abort())
+  }
+  expect(await safeFetchText(new URL(base), { signal: controller.signal })).toMatchObject(failure('cancelled'))
+  await vi.waitFor(() => expect(closed).toBe(true))
+})
+it('does not dial if caller cancellation occurs during DNS lookup', async () => {
+  const controller = new AbortController()
+  let finishDns!: (addresses: LookupAddress[]) => void
+  resolver.mockImplementation(() => new Promise((resolve) => { finishDns = resolve }))
+  const running = safeFetchText(new URL(base), { signal: controller.signal })
+  controller.abort()
+  expect(await running).toMatchObject(failure('cancelled'))
+  finishDns([{ address: '93.184.216.34', family: 4 }])
+  await new Promise<void>((resolve) => setImmediate(resolve))
+  expect(dialed).toEqual([])
+})
