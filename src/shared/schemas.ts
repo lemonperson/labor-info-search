@@ -127,3 +127,25 @@ export const historyListResponseSchema = z.array(searchSessionSchema).max(100)
 export const historyGetResponseSchema = searchSessionSchema.nullable()
 export const storageEmptyRequestSchema = z.object({}).strict()
 export const storageMutationResponseSchema = z.null()
+
+export const ocrErrorSchema = z.enum([
+  'picker-cancelled', 'cancelled', 'invalid-image', 'image-too-large', 'unreadable-image', 'ocr-failed'
+])
+
+const ocrConfidence = z.number().min(0).max(100)
+export const ocrTextLineSchema = z.object({ text: z.string().max(2000), confidence: ocrConfidence }).strict()
+export const ocrTextWordSchema = z.object({ text: z.string().max(500), confidence: ocrConfidence }).strict()
+export const ocrProgressSchema = z.object({ status: z.string().min(1).max(80), progress: z.number().min(0).max(1) }).strict()
+export const ocrCandidateResultSchema = z.object({
+  rawText: z.string().max(50000),
+  confidence: ocrConfidence,
+  lines: z.array(ocrTextLineSchema).max(1000),
+  words: z.array(ocrTextWordSchema).max(10000),
+  candidates: z.array(entityCandidateSchema).max(100),
+  needsReview: z.boolean()
+}).strict()
+export const ocrResultSchema = z.discriminatedUnion('ok', [
+  z.object({ ok: z.literal(true), value: ocrCandidateResultSchema }).strict(),
+  z.object({ ok: z.literal(false), error: ocrErrorSchema }).strict()
+])
+export const ocrRequestSchema = z.object({}).strict()

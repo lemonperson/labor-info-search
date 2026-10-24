@@ -3,7 +3,7 @@ import type {
   appInfoSchema, appSettingsSchema, claimStatusSchema, companySubjectSchema, connectorRunSchema,
   entityCandidateSchema, eventGroupSchema, searchQuerySchema, searchSessionSchema,
   sourceRecordSchema, sourceRegistryEntrySchema, sourceRegistrySchema, sourceTypeSchema,
-  subjectRoleSchema, subjectVerificationSchema
+  subjectRoleSchema, subjectVerificationSchema, ocrErrorSchema, ocrCandidateResultSchema, ocrProgressSchema, ocrTextLineSchema, ocrTextWordSchema
 } from './schemas'
 
 export type AppSettings = z.infer<typeof appSettingsSchema>
@@ -38,7 +38,18 @@ export interface LaborApi {
     get(): Promise<AppSettings>
     update(patch: Partial<AppSettings>): Promise<AppSettings>
   }
+  image: {
+    pickAndRecognize(): Promise<Result<OcrCandidateResult, OcrError>>
+    cancel(): Promise<null>
+    onProgress(listener: (progress: OcrProgress) => void): () => void
+  }
 }
+
+export type OcrCandidateResult = z.infer<typeof ocrCandidateResultSchema>
+export type OcrError = z.infer<typeof ocrErrorSchema>
+export type OcrProgress = z.infer<typeof ocrProgressSchema>
+export type OcrTextLine = z.infer<typeof ocrTextLineSchema>
+export type OcrTextWord = z.infer<typeof ocrTextWordSchema>
 
 export type ConnectorFailureCode = 'blocked_or_changed' | 'malformed_response' | 'network_error' | 'timeout' | 'cancelled' | 'connector_error'
 export interface SearchQueryRun {

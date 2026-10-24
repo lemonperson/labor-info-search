@@ -26,6 +26,7 @@
     "fast-xml-parser": "5.11.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "tesseract.js": "7.0.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
@@ -52,7 +53,11 @@
     },
     "files": [
       "out/**/*",
-      "package.json"
+      "package.json",
+      "THIRD_PARTY_NOTICES.md"
+    ],
+    "extraResources": [
+      { "from": "resources/ocr/chi_sim.traineddata.gz", "to": "ocr/chi_sim.traineddata.gz" }
     ],
     "win": {
       "target": [

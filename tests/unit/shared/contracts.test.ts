@@ -35,7 +35,7 @@ describe('app-info IPC contract', () => {
       requests.push(args)
       return { name: '劳动信息检索', version: '0.1.0', platform: 'win32' }
     })
-    expect(Object.keys(api)).toEqual(['getAppInfo', 'history', 'settings'])
+    expect(Object.keys(api)).toEqual(['getAppInfo', 'history', 'settings', 'image'])
     await expect(api.getAppInfo()).resolves.toEqual({ name: '劳动信息检索', version: '0.1.0', platform: 'win32' })
     expect(requests).toEqual([['app:get-info', {}]])
     await expect(createLaborApi(async () => ({ name: 'spoofed' })).getAppInfo()).rejects.toThrow()
@@ -56,5 +56,57 @@ describe('main IPC boundary', () => {
     expect(handle({})).toEqual({ name: '劳动信息检索', version: '0.1.0', platform: 'win32' })
     expect(calls).toBe(1)
     expect(() => createAppInfoHandler(() => ({ name: 'spoofed' }))({})).toThrow()
+  })
+})
+
+describe('image OCR preload contract', () => {
+  it('exposes only fixed image-pick and cancel capabilities with validated results', async () => {
+    const { createLaborApi } = await import('../../../src/shared/contracts')
+    const requests: unknown[][] = []
+    const api = createLaborApi(async (...args) => {
+      requests.push(args)
+      if (args[0] === 'image:pick-and-recognize') {
+        return { ok: true, value: { rawText: '生产企业：示例制造有限公司', confidence: 94, lines: [], words: [], candidates: [], needsReview: false } }
+      }
+      if (args[0] === 'image:cancel') return null
+      throw new Error('unexpected capability')
+    })
+    expect(Object.keys(api.image)).toEqual(['pickAndRecognize', 'cancel', 'onProgress'])
+    await expect(api.image.pickAndRecognize()).resolves.toMatchObject({ ok: true, value: { rawText: expect.any(String) } })
+    await expect(api.image.cancel()).resolves.toBeNull()
+    expect(requests).toEqual([
+      ['image:pick-and-recognize', {}],
+      ['image:cancel', {}]
+    ])
+  })
+
+  it('rejects a response that tries to return a screenshot path', async () => {
+    const { createLaborApi } = await import('../../../src/shared/contracts')
+    const api = createLaborApi(async () => ({
+      ok: true,
+      value: { rawText: '示例', confidence: 90, lines: [], words: [], candidates: [], needsReview: false, imagePath: 'C:\\private\\input.png' }
+    }))
+    await expect(api.image.pickAndRecognize()).rejects.toThrow()
+  })
+})
+
+
+
+describe('image OCR progress bridge', () => {
+  it('validates progress payloads and unsubscribes the listener', async () => {
+    const { createLaborApi } = await import('../../../src/shared/contracts')
+    let publish: ((payload: unknown) => void) | undefined
+    let unsubscribed = false
+    const api = createLaborApi(async () => null, (_channel, listener) => {
+      publish = listener
+      return () => { unsubscribed = true }
+    })
+    const received: unknown[] = []
+    const unsubscribe = api.image.onProgress(progress => received.push(progress))
+    publish?.({ status: 'recognizing text', progress: 0.5 })
+    publish?.({ status: 'bad progress', progress: 2 })
+    expect(received).toEqual([{ status: 'recognizing text', progress: 0.5 }])
+    unsubscribe()
+    expect(unsubscribed).toBe(true)
   })
 })

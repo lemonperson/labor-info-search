@@ -2,5 +2,7 @@ allowBuilds:
   electron: true
   esbuild: true
   electron-winstaller: false
-# Version 13 ships runtime-independent N-API binaries; no source rebuild is needed.
+  # Version 13 ships runtime-independent N-API binaries; no source rebuild is needed.
   better-sqlite3: false
+  # This only displays the upstream donation prompt and does not prepare runtime files.
+  tesseract.js: false

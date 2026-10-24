@@ -2,9 +2,9 @@ import { z } from 'zod'
 import {
   appInfoRequestSchema, appInfoSchema, appSettingsSchema, historyGetResponseSchema,
   historyIdRequestSchema, historyListRequestSchema, historyListResponseSchema, settingsPatchSchema,
-  storageEmptyRequestSchema, storageMutationResponseSchema
+  storageEmptyRequestSchema, storageMutationResponseSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema
 } from './schemas'
-import type { AppInfo, AppSettings, LaborApi } from './types'
+import type { AppInfo, AppSettings, LaborApi, OcrProgress } from './types'
 
 export const appInfoContract = {
   channel: 'app:get-info', request: appInfoRequestSchema, response: appInfoSchema
@@ -19,11 +19,18 @@ export const storageContracts = {
   'settings:update': { request: settingsPatchSchema, response: appSettingsSchema }
 } as const
 
+const imageContracts = {
+  'image:pick-and-recognize': { request: ocrRequestSchema, response: ocrResultSchema },
+  'image:cancel': { request: ocrRequestSchema, response: storageMutationResponseSchema }
+} as const
+
 type StorageChannel = keyof typeof storageContracts
-type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel, request: unknown) => Promise<unknown>
+type ImageChannel = keyof typeof imageContracts
+type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel | ImageChannel, request: unknown) => Promise<unknown>
+type Subscribe = (channel: 'image:progress', listener: (payload: unknown) => void) => () => void
 
 // The renderer receives only fixed capabilities, never raw IPC or database access.
-export function createLaborApi(invoke: InvokeLabor): LaborApi {
+export function createLaborApi(invoke: InvokeLabor, subscribe: Subscribe = () => () => {}) : LaborApi {
   async function call<C extends StorageChannel>(channel: C, input: unknown): Promise<z.output<(typeof storageContracts)[C]['response']>> {
     const contract = storageContracts[channel]
     const request = contract.request.parse(input)
@@ -43,6 +50,24 @@ export function createLaborApi(invoke: InvokeLabor): LaborApi {
     settings: Object.freeze({
       get: () => call('settings:get', {}),
       update: (patch: Partial<AppSettings>) => call('settings:update', patch)
+    }),
+    image: Object.freeze({
+      async pickAndRecognize() {
+        const request = imageContracts['image:pick-and-recognize'].request.parse({})
+        return imageContracts['image:pick-and-recognize'].response.parse(
+          await invoke('image:pick-and-recognize', request)
+        )
+      },
+      async cancel() {
+        const request = imageContracts['image:cancel'].request.parse({})
+        return imageContracts['image:cancel'].response.parse(await invoke('image:cancel', request))
+      },
+      onProgress(listener: (progress: OcrProgress) => void) {
+        return subscribe('image:progress', (payload) => {
+          const parsed = ocrProgressSchema.safeParse(payload)
+          if (parsed.success) listener(parsed.data)
+        })
+      }
     })
   })
 }

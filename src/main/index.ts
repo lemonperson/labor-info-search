@@ -5,6 +5,8 @@ import { openDatabase, type DatabaseHandle } from './database/database'
 import { SearchRepository } from './database/search-repository'
 import { SettingsRepository } from './database/settings-repository'
 import { createMainWindow } from './window'
+import { registerImageIpc } from './ipc/register-ipc'
+import { configureOcrModelDirectory, shutdownOcrWorker } from './ocr/ocr-service'
 
 let mainWindow: BrowserWindow | null = null
 let database: DatabaseHandle | null = null
@@ -14,7 +16,9 @@ function openMainWindow(): void {
   mainWindow.once('closed', () => { mainWindow = null })
 }
 
-void app.whenReady().then(() => {
+void app.whenReady().then(async () => {
+  configureOcrModelDirectory(app.isPackaged ? join(process.resourcesPath, 'ocr') : join(app.getAppPath(), 'resources', 'ocr'))
+  await registerImageIpc(() => mainWindow)
   database = openDatabase(join(app.getPath('userData'), 'labor-information.sqlite'))
   const searches = new SearchRepository(database)
   const settings = new SettingsRepository(database)
@@ -47,7 +51,7 @@ void app.whenReady().then(() => {
   })
 })
 
-app.on('before-quit', () => { database?.close(); database = null })
+app.on('before-quit', () => { database?.close(); database = null; void shutdownOcrWorker() })
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })

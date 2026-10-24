@@ -18,5 +18,10 @@ export const laborApi: LaborApi = {
   settings: {
     get: async () => window.laborApi.settings.get(),
     update: async patch => window.laborApi.settings.update(patch)
+  },
+  image: {
+    pickAndRecognize: async () => window.laborApi.image.pickAndRecognize(),
+    cancel: async () => window.laborApi.image.cancel(),
+    onProgress: listener => window.laborApi.image.onProgress(listener)
   }
 }
