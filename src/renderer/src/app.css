@@ -1,0 +1,14 @@
+:root {
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: #202832;
+  background: #f5f6f8;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+#root { min-height: 100vh; display: grid; place-items: center; padding: 32px; }
+.app-surface { width: min(100%, 640px); padding: 40px; background: #fff; border: 1px solid #e2e5ea; border-radius: 12px; }
+h1 { margin: 0 0 16px; font-size: 28px; font-weight: 600; }
+p { margin: 0; color: #647080; line-height: 1.6; }
