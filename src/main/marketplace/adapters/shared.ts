@@ -83,15 +83,17 @@ function visibleLabelValues($: CheerioAPI): SourceValue[] {
 function metadataValues($: CheerioAPI): { title: string; values: SourceValue[] } {
   const values: SourceValue[] = []
   let title = clean($('meta[property="og:title" i]').first().attr('content') ?? $('meta[name="twitter:title" i]').first().attr('content') ?? $('title').first().text())
-  const add = (selector: string, field: string, role: Role) => {
+  const add = (selector: string, role: Role) => {
     const node = $(selector).first()
     if (!node.length) return
     const name = clean(node.attr('content') ?? node.text())
+    const attribute = node.attr('property') !== undefined ? 'property' : 'name'
+    const field = `meta[${attribute}=${node.attr(attribute)}]`
     if (name) values.push({ name, role, source: 'metadata', field })
   }
-  add('meta[property="product:brand" i], meta[name="brand" i]', 'meta[property=product:brand]', 'brand')
-  add('meta[property="product:seller" i], meta[name="seller" i]', 'meta[property=product:seller]', 'store-operator')
-  add('meta[property="product:manufacturer" i], meta[name="manufacturer" i]', 'meta[property=product:manufacturer]', 'manufacturer')
+  add('meta[property="product:brand" i], meta[name="brand" i]', 'brand')
+  add('meta[property="product:seller" i], meta[name="seller" i]', 'store-operator')
+  add('meta[property="product:manufacturer" i], meta[name="manufacturer" i]', 'manufacturer')
   if (!title) title = clean($('h1').first().text())
   return { title, values }
 }

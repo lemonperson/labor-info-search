@@ -58,3 +58,21 @@ it('extracts JSON-LD manufacturer evidence and ignores hidden labeled fields', (
   expect(result.status).toBe('resolved')
   expect(result.evidence.some(({ source, field }) => source === 'json-ld' && field.includes('.manufacturer'))).toBe(true)
 })
+
+it.each([
+  ['product:brand', 'brand', 'brand', '品牌主体'],
+  ['product:seller', 'seller', 'store-operator', '店铺主体'],
+  ['product:manufacturer', 'manufacturer', 'manufacturer', '制造主体']
+] as const)('records the actual metadata selector for %s and name=%s', (property, name, role, subject) => {
+  const propertyResult = jdAdapter.extract(load(`<meta property="${property}" content="${subject}">`), new URL('https://item.jd.com/1.html'))
+  expect(propertyResult.evidence).toContainEqual(expect.objectContaining({
+    source: 'metadata', field: `meta[property=${property}]`, excerpt: subject
+  }))
+  expect(propertyResult.candidates).toContainEqual(expect.objectContaining({ name: subject, role }))
+
+  const nameResult = jdAdapter.extract(load(`<meta name="${name}" content="${subject}">`), new URL('https://item.jd.com/1.html'))
+  expect(nameResult.evidence).toContainEqual(expect.objectContaining({
+    source: 'metadata', field: `meta[name=${name}]`, excerpt: subject
+  }))
+  expect(nameResult.candidates).toContainEqual(expect.objectContaining({ name: subject, role }))
+})
