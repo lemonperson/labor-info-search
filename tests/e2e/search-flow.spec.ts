@@ -2,17 +2,33 @@ import { test, expect, _electron as electron } from '@playwright/test'
 import type { ElectronApplication } from '@playwright/test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { openDatabase } from '../../src/main/database/database'
+import { SearchRepository } from '../../src/main/database/search-repository'
+import { session as savedFixtureSession } from '../integration/database/fixtures'
 
 let desktop: ElectronApplication
 let userData: string
-test.beforeEach(async () => {
+async function submitFixtureSearch(page: import('@playwright/test').Page) {
+  await page.getByRole('textbox', { name: '企业或品牌名称' }).fill('青禾劳动检索端到端测试公司')
+  await page.getByRole('button', { name: '继续确认主体' }).click()
+  await page.getByRole('button', { name: '确认主体', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '青禾劳动检索端到端测试公司 的检索结果' })).toBeVisible({ timeout: 45_000 })
+}
+test.beforeEach(async ({ browserName }, testInfo) => {
+  void browserName
   const env = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
   delete env.NO_COLOR
   delete env.ELECTRON_RUN_AS_NODE
   userData = await mkdtemp(join(tmpdir(), 'labor-search-e2e-'))
   env.LABOR_SEARCH_E2E_USER_DATA = userData
   env.LABOR_SEARCH_E2E_FIXTURE = 'enabled'
+  if (testInfo.title.includes('every connector fails')) {
+    env.LABOR_SEARCH_E2E_FIXTURE_FAIL = 'enabled'
+    const db = openDatabase(join(userData, 'labor-information.sqlite'))
+    new SearchRepository(db).saveSession(savedFixtureSession())
+    db.close()
+  }
   desktop = await electron.launch({ args: ['.'], env })
   const page = await desktop.firstWindow()
   await expect(page.locator('.app-status')).toHaveText('已就绪')
@@ -35,6 +51,22 @@ test('runs a best-effort session only after explicit subject confirmation', asyn
     await page.getByRole('group', { name: '按来源类型筛选' }).getByLabel('其他来源').check()
     await page.getByRole('button', { name: /劳动争议信息测试记录/ }).click()
     await expect(page.getByRole('main', { name: '来源详情' })).toContainText('https://example.com/labor-search-fixture')
+    await desktop.evaluate(({ shell }) => {
+      const state = globalThis as typeof globalThis & { taskSourceOpens: string[] }
+      state.taskSourceOpens = []
+      shell.openExternal = async url => { state.taskSourceOpens.push(url) }
+    })
+    await page.getByRole('button', { name: '打开原文前确认' }).click()
+    const sourceDialog = page.getByRole('dialog', { name: '打开原文前确认' })
+    await expect(sourceDialog).toContainText('example.com')
+    await expect(sourceDialog).toContainText('https://example.com/labor-search-fixture')
+    await sourceDialog.getByRole('button', { name: '取消' }).click()
+    expect(await desktop.evaluate(() => (globalThis as typeof globalThis & { taskSourceOpens: string[] }).taskSourceOpens)).toEqual([])
+    await page.getByRole('button', { name: '打开原文前确认' }).click()
+    const confirmedSourceDialog = page.getByRole('dialog', { name: '打开原文前确认' })
+    await confirmedSourceDialog.getByRole('button', { name: '确认并打开原文' }).click()
+    await expect(confirmedSourceDialog).toHaveCount(0)
+    expect(await desktop.evaluate(() => (globalThis as typeof globalThis & { taskSourceOpens: string[] }).taskSourceOpens)).toEqual(['https://example.com/labor-search-fixture'])
     await page.getByRole('button', { name: '返回检索结果' }).click()
     await expect(page.getByRole('group', { name: '按来源类型筛选' }).getByLabel('其他来源')).toBeChecked()
     await page.getByRole('button', { name: '在浏览器中继续搜索' }).click()
@@ -105,6 +137,28 @@ test('runs a best-effort session only after explicit subject confirmation', asyn
   } finally {
     await page.evaluate(settings => window.laborApi.settings.update(settings), original)
   }
+})
+
+test('keeps local results, history, OCR, and settings usable after every connector fails', async () => {
+  test.setTimeout(90_000)
+  const page = await desktop.firstWindow()
+  await submitFixtureSearch(page)
+  await expect(page.getByRole('heading', { name: '网络暂时不可用' })).toBeVisible()
+  await page.getByRole('button', { name: '历史' }).click()
+  const row = page.getByRole('button', { name: /示例制造有限公司/u })
+  await expect(row).toHaveCount(1)
+  await row.click()
+  await expect(page.getByRole('button', { name: /员工公开陈述/ })).toBeVisible()
+  await page.getByRole('button', { name: '新建检索' }).click()
+  await page.getByRole('button', { name: '设置' }).click()
+  await expect(page.getByRole('checkbox', { name: '保存本机检索历史' })).toBeVisible()
+  await page.getByRole('button', { name: '开始检索' }).click()
+  await desktop.evaluate(({ dialog }, imagePath) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [imagePath] })
+  }, resolve('tests/fixtures/ocr/package-label.png'))
+  await page.getByRole('tab', { name: '上传截图' }).click()
+  await page.getByRole('button', { name: '选择截图' }).click()
+  await expect(page.getByRole('status').filter({ hasText: '候选' })).toContainText('候选', { timeout: 45_000 })
 })
 
  test('rejects unconfirmed or malformed search payloads in preload', async () => {

@@ -30,7 +30,7 @@ test('loads the product through a minimal isolated bridge without Node globals',
     info: await window.laborApi.getAppInfo(),
     globals: ['require', 'process', 'Buffer', '__dirname', 'module', 'ipcRenderer'].map(key => typeof Reflect.get(window, key))
   }))).toEqual({
-    methods: ['getAppInfo', 'history', 'settings', 'search', 'image', 'marketplace', 'browser'],
+    methods: ['getAppInfo', 'recovery', 'history', 'settings', 'search', 'image', 'marketplace', 'browser'],
     info: { name: '劳动信息检索', version: '0.1.0', platform: 'win32' },
     globals: ['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined']
   })
@@ -159,7 +159,7 @@ test('OCR candidates can be corrected before explicit confirmation without openi
   expect(await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1)
 })
 
-test('renderer cancellation stops pending OCR and discards its eventual response', async () => {
+test('renderer cancellation propagates the cancelled OCR response and returns to editable input', async () => {
   await desktop.evaluate(({ ipcMain }) => {
     const state = globalThis as typeof globalThis & { task14OcrStarted?: boolean; task14OcrCancelled?: boolean; task14ResolveOcr?: (result: unknown) => void }
     state.task14OcrStarted = false

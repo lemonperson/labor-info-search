@@ -26,7 +26,8 @@ let settings: SettingsRepository
 let id = 0
 const timestamp = '2026-10-24T07:00:00Z'
 function service(connectors: SearchConnector[]) {
-  return new SearchSessionService(new SearchService(connectors, { queryTimeoutMs: 15 }), repository, {
+  const connectorPolicies = Object.fromEntries(connectors.map(({ id }) => [id, { enabled: true, requestsPerMinute: 60 }]))
+  return new SearchSessionService(new SearchService(connectors, { queryTimeoutMs: 15, connectorPolicies }), repository, {
     createId: () => `session-${++id}`, now: () => timestamp
   })
 }
@@ -156,6 +157,15 @@ describe('search IPC lifetime', () => {
 
     await expect(instance.start(changedInput, () => {}, sessionId)).rejects.toThrow('Search session ID already exists')
     expect(repository.getSession(sessionId)).toEqual(saved)
+  })
+
+  it('retains the current unsaved result session for a source preview lookup', async () => {
+    settings.updateSettings({ saveHistory: false })
+    const connector: SearchConnector = { id: 'empty', search: async query => ({ ok: true, records: query.id.endsWith(':wages') ? [record('unsaved-record', 'https://news.example.com/item', '一条来源', ['主体名称'])] : [] }) }
+    const instance = service([connector])
+    const saved = await instance.start(input, () => {}, '8d4576e0-f8ad-44db-a42a-000000000004')
+    expect(repository.getSession(saved.id)).toBeNull()
+    expect(instance.getSession(saved.id)).toEqual(saved)
   })
 
   it('rejects an untrusted sender and subframe before invoking a handler', async () => {

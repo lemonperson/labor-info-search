@@ -9,7 +9,7 @@ const session: SearchSession = { id: 'session', inputType: 'company-name', subje
 
 describe('result detail', () => {
   it('shows the original source, match evidence, unavailable state, and related follow-up as inert text', () => {
-    const html = renderToStaticMarkup(<ResultDetail session={session} record={record} onBack={() => {}} />)
+    const html = renderToStaticMarkup(<ResultDetail session={session} record={record} onBack={() => {}} onPreviewSource={() => {}} />)
     expect(html).toContain('https://example.com/a?b=1')
     expect(html).toContain('example.com')
     expect(html).toContain('名称出现在正文')
@@ -18,5 +18,9 @@ describe('result detail', () => {
     expect(html).toContain('页面可能已删除或暂时无法访问')
     expect(html).toContain('后续回应')
     expect(html).toContain('返回检索结果')
+    expect(html).toContain('打开原文前确认')
+    expect(html).toContain('主体尚未权威核验')
+    expect(html).toContain('可能相关的来源（建议分组）')
+    expect(html).toContain('仅供人工复核')
   })
 })

@@ -11,6 +11,7 @@ export function normalizeRawResult(raw: SourceRecord, subject: CompanySubject, r
   // Bound hostile connector text before the strict persisted-record schema sees it.
   const candidate = sourceRecordSchema.parse({
     ...raw,
+    ...(raw.sourceType === 'employee-statement' ? { claimStatus: 'unverified' } : {}),
     title: toSafeDisplayText(raw.title, 500),
     excerpt: toSafeDisplayText(raw.excerpt, 1200),
     matchEvidence: raw.matchEvidence.slice(0, 20).map((evidence) => toSafeDisplayText(evidence, 500))
@@ -30,7 +31,7 @@ export function normalizeRawResult(raw: SourceRecord, subject: CompanySubject, r
     title,
     publisher,
     url: url.href,
-    sourceType: classification.sourceType,
+    sourceType: candidate.sourceType !== 'other' ? candidate.sourceType : classification.sourceType,
     // Retrieval metadata does not prove a claim or imply a company's position.
     claimStatus: 'unverified',
     excerpt,

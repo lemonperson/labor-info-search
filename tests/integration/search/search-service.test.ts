@@ -38,6 +38,15 @@ describe('search orchestration', () => {
     expect(batch.records).toEqual([])
     expect(batch.queryRuns.map((run) => run.errorCode)).toEqual(['blocked_or_changed', 'connector_error'])
   })
+  it('does not schedule a connector whose validated policy is disabled', async () => {
+    let calls = 0
+    const disabled: SearchConnector = { id: 'disabled', search: async () => { calls++; return { ok: true, records: [] } } }
+    const batch = await new SearchService([disabled], { connectorPolicies: { disabled: { enabled: false, requestsPerMinute: 12 } } })
+      .run(subject, queries.slice(0, 1), () => {}, new AbortController().signal)
+    expect(calls).toBe(0)
+    expect(batch.status).toBe('failed')
+    expect(batch.connectorRuns).toEqual([])
+  })
   it('enforces concurrency two across the full connector/query matrix', async () => {
     let active = 0, peak = 0, calls = 0
     const releases: (() => void)[] = []
@@ -109,5 +118,31 @@ describe('search orchestration', () => {
   })
   it('rejects mismatched subjects before network work', async () => {
     await expect(new SearchService([success]).run(subject, [{ ...queries[0], subjectId: 'other' }], () => {}, new AbortController().signal)).rejects.toThrow()
+  })
+  it('shares an abortable per-connector rate window across overlapping runs with an injected clock', async () => {
+    let now = 0, calls = 0
+    const sleepers: Array<{ ms: number; wake(): void; abort(): void }> = []
+    const connector: SearchConnector = { id: 'limited', search: async () => { calls++; return { ok: true, records: [] } } }
+    const service = new SearchService([connector], { connectorPolicies: { limited: { enabled: true, requestsPerMinute: 1 } }, clock: {
+      now: () => now,
+      delay: (ms, signal) => new Promise(resolve => {
+        const entry = { ms, wake: () => resolve(true), abort: () => resolve(false) }
+        sleepers.push(entry)
+        signal.addEventListener('abort', entry.abort, { once: true })
+      })
+    } })
+    const first = service.run(subject, queries.slice(0, 1), () => {}, new AbortController().signal)
+    await vi.waitFor(() => expect(calls).toBe(1))
+    const controller = new AbortController()
+    const second = service.run(subject, queries.slice(0, 1), () => {}, controller.signal)
+    await vi.waitFor(() => expect(sleepers).toHaveLength(1))
+    expect(sleepers[0].ms).toBe(60_000)
+    expect(calls).toBe(1)
+    controller.abort()
+    expect((await second).status).toBe('cancelled')
+    now = 60_000
+    sleepers[0].wake()
+    await first
+    expect(calls).toBe(1)
   })
 })

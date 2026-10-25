@@ -28,7 +28,7 @@ jobs:
       - run: pnpm build
       - run: pnpm dist:win
       - run: pnpm dist:portable
-      - run: pnpm playwright test tests/e2e/packaged-app.spec.ts
+      - run: pnpm test:e2e
       - name: Create SHA-256 checksums
         shell: pwsh
         run: |
@@ -46,6 +46,7 @@ jobs:
       - name: Publish unsigned binaries
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: true
           generate_release_notes: true
           body: |
             These Windows binaries are unsigned. Windows may show an unknown-publisher warning. Verify each download with its attached SHA-256 checksum.

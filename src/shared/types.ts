@@ -38,6 +38,7 @@ export type Result<T, E> =
 
 export interface LaborApi {
   getAppInfo(): Promise<AppInfo>
+  recovery: { showDataFolder(): Promise<null>; restart(): Promise<null> }
   history: {
     list(limit?: number): Promise<SearchSession[]>
     get(id: string): Promise<SearchSession | null>
@@ -63,6 +64,8 @@ export interface LaborApi {
     cancel(): Promise<null>
   }
   browser: {
+    previewSource(sessionId: string, recordId: string): Promise<SourcePreview>
+    openSourceConfirmed(previewId: string): Promise<Result<void, BrowserOpenError>>
     preview(provider: 'bing', reason: string, queries: SearchQuery[]): Promise<BrowserFallbackPreview>
     openConfirmed(previewId: string): Promise<Result<void, BrowserOpenError>>
   }
@@ -110,6 +113,7 @@ export interface BrowserFallbackPreview {
   queries: string[]
   expiresAt: string
 }
+export interface SourcePreview { previewId: string; title: string; url: string; hostname: string; expiresAt: string }
 export type BrowserOpenError = 'preview-not-found' | 'preview-expired' | 'browser-open-failed'
 export type ConfirmedSubjectInput = z.infer<typeof confirmedSubjectInputSchema>
 export type SessionProgress = z.infer<typeof searchProgressSchema>

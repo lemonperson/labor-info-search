@@ -34,4 +34,11 @@ describe('history and privacy pages', () => {
     const html = renderToStaticMarkup(<HistoryPage sessions={history} onOpen={() => {}} onDelete={() => {}} onClear={() => {}} />)
     expect(html).toContain('清空历史记录')
   })
+  it('keeps viewing and deletion of saved records available when future saving is off', () => {
+    const html = renderToStaticMarkup(<HistoryPage sessions={history} saveHistory={false} onOpen={() => {}} onDelete={() => {}} onClear={() => {}} />)
+    expect(html).toContain('青禾制造')
+    expect(html).toContain('删除这条记录')
+    expect(html).toContain('清空历史记录')
+    expect(html).toContain('之后的检索不会写入历史记录')
+  })
 })

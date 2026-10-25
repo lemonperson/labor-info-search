@@ -19,6 +19,8 @@ describe('results page', () => {
   it('shows factual provenance and uncertainty without scoring or purchasing advice', () => {
     const html = renderToStaticMarkup(<ResultsPage session={session} />)
     expect(html).toContain('公开部门')
+    expect(html).toContain('主体角色：未确认')
+    expect(html).toContain('主体尚未权威核验')
     expect(html).toContain('2026-01-01')
     expect(html).toContain('劳动争议处理进展')
     expect(html).toContain('新资料摘录')

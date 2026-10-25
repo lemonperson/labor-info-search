@@ -22,6 +22,11 @@ describe('normalizeRawResult', () => {
   it('preserves registry classification and never promotes social claims', () => {
     expect(normalizeRawResult({ ...raw, publisher: 'weibo.com', title: '企业回应，发展良好' }, subject).sourceType).toBe('other')
   })
+  it('preserves trusted connector classification while keeping personal claims unverified', () => {
+    const result = normalizeRawResult({ ...raw, sourceType: 'employee-statement', claimStatus: 'independently-confirmed' }, subject)
+    expect(result).toMatchObject({ sourceType: 'employee-statement', claimStatus: 'unverified' })
+    expect(normalizeRawResult({ ...raw, sourceType: 'company-response' }, subject).sourceType).toBe('company-response')
+  })
   it('sanitizes and bounds every match evidence item and caps the evidence array', () => {
     const result = normalizeRawResult({ ...raw, matchEvidence: ['<b>据公开页面记载</b>\u202e', ...Array.from({ length: 24 }, (_, index) => `线索 ${index}`), 'x'.repeat(900)] }, subject)
     expect(result.matchEvidence).toHaveLength(20)

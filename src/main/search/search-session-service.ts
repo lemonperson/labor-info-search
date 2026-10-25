@@ -17,16 +17,21 @@ const readableFailures: Record<string, string> = {
 
 export class SearchSessionService {
   private readonly controllers = new Map<string, AbortController>()
+  private readonly recentSessions = new Map<string, SearchSession>()
   constructor(
     private readonly search: SearchService,
     private readonly repository: SearchRepository,
     private readonly options: { createId?: () => string; now?: () => string } = {}
   ) {}
 
+  getSession(sessionId: string): SearchSession | null {
+    return this.recentSessions.get(sessionId) ?? this.repository.getSession(sessionId)
+  }
+
   async start(input: ConfirmedSubjectInput, progressPort: (progress: SessionProgress) => void, requestedSessionId?: string): Promise<SearchSession> {
     const confirmed = confirmedSubjectInputSchema.parse(input)
     const sessionId = requestedSessionId ?? this.options.createId?.() ?? randomUUID()
-    if (this.controllers.has(sessionId) || this.repository.getSession(sessionId)) {
+    if (this.controllers.has(sessionId) || this.recentSessions.has(sessionId) || this.repository.getSession(sessionId)) {
       throw new TypeError('Search session ID already exists')
     }
     const startedAt = this.options.now?.() ?? new Date().toISOString()
@@ -61,6 +66,8 @@ export class SearchSessionService {
       })
       emit({ phase: 'saving', completed: records.length, total: records.length, status: session.status })
       this.repository.saveSession(session)
+      this.recentSessions.set(session.id, session)
+      while (this.recentSessions.size > 100) this.recentSessions.delete(this.recentSessions.keys().next().value!)
       emit({ phase: 'complete', completed: records.length, total: records.length, status: session.status })
       return session
     } finally {

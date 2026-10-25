@@ -27,4 +27,11 @@ describe('groupRelatedEvents', () => {
     expect(groupRelatedEvents([record('a', '甲公司食品召回', '2026-10-01', '甲公司'), record('b', '乙公司产品涨价', '2026-10-01', '乙公司')])).toHaveLength(0)
     expect(groupRelatedEvents([record('c', '示例公司食品召回', '2026-10-01', '示例公司'), record('d', '示例公司产品涨价', '2026-10-01', '示例公司')])).toHaveLength(0)
   })
+  it('associates a report and response returned by different topic queries using content evidence', () => {
+    const report = { ...record('a', '示例公司拖欠工资被员工投诉', '2026-10-01', 'query=q1; connector=bing-rss'), excerpt: '示例公司员工称工资未按时发放，涉及劳动争议。' }
+    const response = { ...record('b', '示例公司发布回应：工资已结清', '2026-10-03', 'query=q8; connector=bing-rss'), excerpt: '针对员工欠薪争议，示例公司回应称工资已经结清。' }
+    const groups = groupRelatedEvents([report, response])
+    expect(groups).toHaveLength(1)
+    expect(groups[0].matchEvidence.join(' ')).toContain('工资')
+  })
 })

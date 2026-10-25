@@ -28,4 +28,5 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm dist:win
+      - run: pnpm build:e2e
       - run: pnpm playwright test

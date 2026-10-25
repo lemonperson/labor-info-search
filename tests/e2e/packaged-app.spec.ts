@@ -1,5 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -8,6 +8,9 @@ const executable = resolve('dist/win-unpacked/劳动信息检索.exe')
 test('packaged app starts with disclosures, uses its bundled OCR model, creates local data, and shuts down cleanly', async () => {
   test.setTimeout(60_000)
   expect(existsSync(executable), `packaged executable missing at ${executable}`).toBe(true)
+  const archive = resolve('dist/win-unpacked/resources/app.asar')
+  expect(existsSync(archive), `packaged ASAR missing at ${archive}`).toBe(true)
+  expect(readFileSync(archive).includes(Buffer.from('e2e-fixture-connector'))).toBe(false)
   const userData = mkdtempSync(join(tmpdir(), 'labor-packaged-e2e-'))
   const env = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
   delete env.ELECTRON_RUN_AS_NODE

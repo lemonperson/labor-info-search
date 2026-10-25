@@ -14,10 +14,10 @@ export function HistoryPage({ sessions, onOpen, onDelete, onClear, onSettings, o
     <AppChrome onIntake={onIntake} onSettings={onSettings}>
       <main className="history-shell" aria-label="检索历史">
         <div className="history-heading"><div><p className="eyebrow">只在这台设备</p><h1>检索历史</h1><p className="results-summary">本机保存的检索记录仅供你查看。</p></div>
-          <button type="button" className="text-action" disabled={!saveHistory || sessions.length === 0} onClick={() => setConfirmClear(true)}>清空历史记录</button>
+          <button type="button" className="text-action" disabled={sessions.length === 0} onClick={() => setConfirmClear(true)}>清空历史记录</button>
         </div>
-        {!saveHistory ? <p className="history-off-note" role="status">已关闭历史记录保存。之后的检索不会写入历史记录。</p>
-          : error ? <FailureState kind="database-recovery" onAction={() => window.location.reload()} technicalDetails={error} />
+        {!saveHistory && <p className="history-off-note" role="status">已关闭历史记录保存。之后的检索不会写入历史记录。</p>}
+        {error ? <FailureState kind="database-recovery" onAction={() => window.location.reload()} technicalDetails={error} />
           : sessions.length ? <ol className="history-list">{sessions.map(session => <HistoryRow key={session.id} session={session} onOpen={() => onOpen(session)} onDelete={() => onDelete(session.id)} />)}</ol>
           : <EmptyState title="还没有本机检索记录" detail="完成检索后，记录会显示在这里。你也可以随时在设置中关闭历史记录。" />}
       </main>

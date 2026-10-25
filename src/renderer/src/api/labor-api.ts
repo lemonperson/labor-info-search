@@ -9,6 +9,7 @@ declare global {
 export const laborApi: LaborApi = {
   // Async wrappers turn a missing preload into a safe renderer error state.
   getAppInfo: async () => window.laborApi.getAppInfo(),
+  recovery: { showDataFolder: async () => window.laborApi.recovery.showDataFolder(), restart: async () => window.laborApi.recovery.restart() },
   history: {
     list: async limit => window.laborApi.history.list(limit),
     get: async id => window.laborApi.history.get(id),
@@ -34,6 +35,8 @@ export const laborApi: LaborApi = {
     cancel: async () => window.laborApi.marketplace.cancel()
   },
   browser: {
+    previewSource: async (sessionId, recordId) => window.laborApi.browser.previewSource(sessionId, recordId),
+    openSourceConfirmed: async previewId => window.laborApi.browser.openSourceConfirmed(previewId),
     preview: async (provider, reason, queries) => window.laborApi.browser.preview(provider, reason, queries),
     openConfirmed: async previewId => window.laborApi.browser.openConfirmed(previewId)
   }

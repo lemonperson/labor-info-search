@@ -8,16 +8,16 @@ Scope: local acceptance and packaging only. GitHub publication, tagging, and rel
 
 | # | Scenario | Result and evidence |
 |---|---|---|
-| 1 | Install and open on a fresh Windows setup without developer tools, account, or key | **Partial.** Fresh isolated app data is exercised by `tests/e2e/packaged-app.spec.ts`; it asserts the packaged binary starts, shows first-run disclosure, loads bundled OCR resources, and uses the temporary profile path. NSIS and portable artifacts were freshly built. Interactive NSIS install and the actual clean Windows account flow were not verified because native computer-use approval timed out before opening Explorer. |
-| 2 | Confirm a company and inspect sourced results | **Pass (automated fixture).** `tests/e2e/search-flow.spec.ts` confirms the subject, checks a result and its original URL in detail, and returns with filters preserved. |
+| 1 | Install and open on a fresh Windows setup without developer tools, account, or key | **Partial.** Fresh isolated app data is exercised by `tests/e2e/packaged-app.spec.ts`; it asserts the packaged binary starts, shows first-run disclosure, loads bundled OCR resources, and uses a temporary profile. NSIS and portable artifacts were built and checksummed. Interactive NSIS installation, portable visible-window review, and a separate Windows account remain unverified pending action-time approval for native UI launches. |
+| 2 | Confirm a company and inspect sourced results | **Pass (automated fixture).** `tests/e2e/search-flow.spec.ts` confirms the subject and source, reviews the exact source URL/domain in a main-generated confirmation dialog, tests cancel without opening, and verifies one-time confirmed opening. |
 | 3 | Resolve Taobao/JD/Douyin/Pinduoduo links or provide a fallback | **Pass (fixtures and fallback).** Adapter tests cover all four platform parsers. `tests/e2e/app.spec.ts` exercises a blocked JD URL and confirms screenshot/manual alternatives remain available. Live marketplace pages were not used as acceptance fixtures. |
 | 4 | Run local OCR and allow correction before confirmation | **Pass.** `tests/e2e/packaged-app.spec.ts` checks packaged OCR model presence and recognizes `tests/fixtures/ocr/package-label.png`; `tests/e2e/app.spec.ts` verifies candidate correction before explicit subject confirmation. Low-confidence/no-candidate degradation stays editable and does not start a search. |
 | 5 | Keep personal claims distinct from official findings | **Pass (automated unit coverage).** `tests/unit/results/classify-source.test.ts`, normalization, and schema tests preserve source category and claim verification independently. |
-| 6 | Link an event’s statements, response, and later outcome in detail | **Pass (automated data coverage).** `tests/unit/results/group-events.test.ts` and `tests/unit/renderer/result-detail.test.tsx` verify suggested event grouping and independent source details. |
+| 6 | Link an event’s statements, response, and later outcome in detail | **Pass (automated data coverage).** `tests/unit/results/group-events.test.ts` covers report/response hits from different query topics using title/excerpt content, with an explicit tentative matching basis; `tests/unit/renderer/result-detail.test.tsx` checks the suggested label and uncertainty. |
 | 7 | Ask before opening an external search | **Pass.** `tests/e2e/search-flow.spec.ts` verifies the previewed domain and query, cancellation without a browser open, and the confirmed open path. |
 | 8 | Explain that no results do not prove the absence of issues | **Pass.** `tests/unit/renderer/failure-states.test.tsx` checks actionable no-results wording; source failure and empty-search tests cover graceful states. |
 | 9 | Delete one history item, clear history/cache, and avoid retaining screenshot files | **Pass for history deletion; screenshot evidence is code-path review.** `tests/e2e/privacy-flow.spec.ts` deletes a row and clears history, then confirms the database list is empty. OCR tests pass an image path to local processing and persist only confirmed text/results; the database session schema contains no image field. The packaged test uses and removes a temporary data directory. |
-| 10 | Continue safely after disconnect, timeout, or connector failure | **Pass.** `tests/integration/search/search-service.test.ts` and `tests/integration/search/search-session-service.test.ts` cover timeout, connector failure, cancellation, partial results, and persistence. |
+| 10 | Continue safely after disconnect, timeout, or connector failure | **Pass.** Search integration tests cover timeout, cancellation, partial results, and persistence. `tests/e2e/search-flow.spec.ts` seeds a saved result, forces all fixture connectors to fail, then verifies the saved result, history, settings, and local OCR remain usable. |
 
 ## Security and privacy acceptance
 
@@ -31,16 +31,16 @@ Scope: local acceptance and packaging only. GitHub publication, tagging, and rel
 
 ## Full automated verification and artifacts
 
-Clean-checkout-equivalent frozen install and full pipeline were run in the assigned feature worktree (the checkout itself was not freshly cloned):
+Final fix-wave verification was run in the assigned feature worktree (the checkout itself was not freshly cloned):
 
 ```text
-pnpm install --frozen-lockfile     → exit 0
 pnpm lint                          → exit 0
 pnpm typecheck                     → exit 0
-pnpm test                          → 30 passed, 1 skipped; 294 passed, 1 skipped
+pnpm test                          → 32 files passed, 1 skipped; 303 passed, 1 skipped
 pnpm build                         → exit 0
-pnpm test:e2e                      → 15 passed
+production fixture absence check   → no E2E fixture connector in `out/main`
 pnpm dist:win                      → exit 0; NSIS x64 installer created
+pnpm test:e2e                      → 17 passed; includes packaged ASAR assertion
 pnpm dist:portable                 → exit 0; portable x64 executable created
 ```
 
@@ -48,18 +48,18 @@ The portable build initially timed out while electron-builder attempted a downlo
 
 | Artifact | Size | SHA-256 |
 |---|---:|---|
-| `dist/劳动信息检索-0.1.0-x64.exe` | 140,235,194 bytes | `75209B3612926EEF41E788D2439A76F65E0F42114025AF99E2E4934A21624834` |
-| `dist/劳动信息检索-0.1.0-x64-portable.exe` | 120,398,799 bytes | `548E85541281A04D3ECD4E3FB362DE81826B8E330FDB8555ED98EB9BE9D095A4` |
+| `dist/劳动信息检索-0.1.0-x64.exe` | 140,237,971 bytes | `4b3ad456f354c229a764e61f3d234b5c8139a65ba6ef7f90149b887809d7d88e` |
+| `dist/劳动信息检索-0.1.0-x64-portable.exe` | 120,388,499 bytes | `0859091722fac2cb587f4d1d74b0025367552fa03b5b82a2f0f3c3342cf05f55` |
 
 Matching `.sha256` sidecars were refreshed in `dist/` and verified against the built files.
 
 ## Manual verification and deferred-item disposition
 
-- **Task 8 renderer cancellation:** addressed with `renderer cancellation stops pending OCR and discards its eventual response` in `tests/e2e/app.spec.ts`. The test exercises the visible cancel control, IPC cancellation, stale-response discard, and return to editable input.
+- **Task 8 renderer cancellation:** `renderer cancellation propagates the cancelled OCR response and returns to editable input` in `tests/e2e/app.spec.ts` verifies cancellation and the error response path. A late-success-after-cancel race is not covered; no such behavior is claimed.
 - **Task 8 OCR failure/degradation:** addressed with `OCR degradation keeps unclear screenshots editable and never starts a search` using `tests/fixtures/ocr/no-company.png`.
 - **Task 10 renderer-supplied UUID collision:** addressed. `SearchSessionService.start()` now rejects IDs already present in the active-session map or saved history. `rejects a completed session ID collision without overwriting saved history` was observed failing before the guard and passing after it; the original saved session remains unchanged.
-- **Task 13 NSIS installer launch / portable visible window:** **not verified.** Both artifacts built and the unpacked packaged app passed Playwright startup/OCR E2E, but native Explorer launch was not available: the computer-use approval for selecting the current Explorer window timed out. No claim is made that the interactive installer or portable app window has been manually verified.
-- **100%, 125%, and 150% Windows scaling:** **not verified.** Native UI automation approval timed out before opening the app. Browser viewport tests cover wide and narrow layout only and are not a substitute for Windows DPI scaling.
+- **Task 13 NSIS installer launch / portable visible window:** **not verified.** The binaries built and packaged Playwright startup/OCR E2E passed. Native launch was not attempted because action-time user confirmation is required by the Computer Use skill before running/installing an app through Windows UI automation, and no such confirmation was given in this task.
+- **100%, 125%, and 150% Windows scaling:** **not verified.** Native UI checks remain pending for the same action-time confirmation gate. Browser viewport tests cover wide and narrow layouts, not Windows DPI scaling.
 - **Clean Windows user profile:** isolated app user-data directories were used in all relevant E2E tests, including packaged startup. A separate Windows OS account was not available in this run.
 
-The local build/test evidence is complete. Release readiness remains contingent on the listed native Windows UI checks and the final independent branch review.
+The local automated build/test evidence is complete. Release readiness remains contingent on the listed native Windows UI checks and an independent branch review. The release workflow publishes only after build, both package targets, full E2E, and checksum generation; the GitHub release is marked prerelease and retains the unsigned-binary disclosure.

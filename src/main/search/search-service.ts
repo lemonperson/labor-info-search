@@ -1,19 +1,25 @@
 import { companySubjectSchema, searchQuerySchema } from '../../shared/schemas'
 import type { CompanySubject, ConnectorRun, SearchBatch, SearchProgress, SearchQuery, SearchQueryRun } from '../../shared/types'
 import type { ConnectorResult, SearchConnector } from './types'
+import { SharedRateLimiter, type RateLimitClock } from './rate-limiter'
 const failure = (code: 'cancelled' | 'timeout' | 'connector_error'): ConnectorResult => ({ ok: false, error: { code } })
 
 export class SearchService {
   private readonly queryTimeoutMs: number
-  constructor(private readonly connectors: readonly SearchConnector[], options: { queryTimeoutMs?: number } = {}) {
+  private readonly connectors: readonly SearchConnector[]
+  private readonly limiters: Map<string, SharedRateLimiter>
+  constructor(connectors: readonly SearchConnector[], options: { queryTimeoutMs?: number; connectorPolicies?: Record<string, { enabled: boolean; requestsPerMinute: number }>; clock?: RateLimitClock } = {}) {
     this.queryTimeoutMs = options.queryTimeoutMs ?? 10_000
     if (!Number.isSafeInteger(this.queryTimeoutMs) || this.queryTimeoutMs < 1 || this.queryTimeoutMs > 10_000)
       throw new RangeError('Query timeout must be between 1 and 10000 milliseconds')
     if (new Set(connectors.map(({ id }) => id)).size !== connectors.length)
       throw new TypeError('Connector IDs must be unique')
+    this.connectors = connectors.filter(({ id }) => options.connectorPolicies?.[id]?.enabled !== false)
+    this.limiters = new Map(this.connectors.map(({ id }) => [id, new SharedRateLimiter(options.connectorPolicies?.[id]?.requestsPerMinute ?? 12, options.clock)]))
   }
   private async execute(connector: SearchConnector, query: SearchQuery, signal: AbortSignal): Promise<ConnectorResult> {
     if (signal.aborted) return failure('cancelled')
+    if (!await this.limiters.get(connector.id)!.acquire(signal)) return failure('cancelled')
     const controller = new AbortController()
     let timer: ReturnType<typeof setTimeout> | undefined
     let abort!: () => void

@@ -4,7 +4,8 @@ import {
   historyIdRequestSchema, historyListRequestSchema, historyListResponseSchema, settingsPatchSchema,
   storageEmptyRequestSchema, storageMutationResponseSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema, searchProgressSchema, searchSessionSchema, searchStartRequestSchema, searchCancelRequestSchema, searchSessionIdSchema,
   marketplaceResolveRequestSchema, productResolutionSchema, browserFallbackPreviewRequestSchema,
-  browserFallbackPreviewSchema, browserOpenConfirmedRequestSchema, browserOpenResponseSchema
+  browserFallbackPreviewSchema, browserOpenConfirmedRequestSchema, browserOpenResponseSchema,
+  sourcePreviewRequestSchema, sourcePreviewResponseSchema
 } from './schemas'
 import type { AppInfo, AppSettings, LaborApi, OcrProgress, SessionProgress, ConfirmedSubjectInput, SearchQuery } from './types'
 
@@ -41,11 +42,18 @@ type ImageChannel = keyof typeof imageContracts
 type MarketplaceChannel = keyof typeof marketplaceContracts
 type SearchChannel = keyof typeof searchContracts
 const browserContracts = {
+  'source:preview': { request: sourcePreviewRequestSchema, response: sourcePreviewResponseSchema },
+  'source:open-confirmed': { request: browserOpenConfirmedRequestSchema, response: browserOpenResponseSchema },
   'browser:preview': { request: browserFallbackPreviewRequestSchema, response: browserFallbackPreviewSchema },
   'browser:open-confirmed': { request: browserOpenConfirmedRequestSchema, response: browserOpenResponseSchema }
 } as const
 type BrowserChannel = keyof typeof browserContracts
-type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel | ImageChannel | MarketplaceChannel | SearchChannel | BrowserChannel, request: unknown) => Promise<unknown>
+const recoveryContract = {
+  'recovery:show-data-folder': { request: storageEmptyRequestSchema, response: storageMutationResponseSchema },
+  'recovery:restart': { request: storageEmptyRequestSchema, response: storageMutationResponseSchema }
+} as const
+type RecoveryChannel = keyof typeof recoveryContract
+type InvokeLabor = (channel: typeof appInfoContract.channel | StorageChannel | ImageChannel | MarketplaceChannel | SearchChannel | BrowserChannel | RecoveryChannel, request: unknown) => Promise<unknown>
 type Subscribe = (channel: 'image:progress' | 'search:progress', listener: (payload: unknown) => void) => () => void
 
 // The renderer receives only fixed capabilities, never raw IPC or database access.
@@ -60,6 +68,16 @@ export function createLaborApi(invoke: InvokeLabor, subscribe: Subscribe = () =>
       const request = appInfoContract.request.parse({})
       return appInfoContract.response.parse(await invoke(appInfoContract.channel, request))
     },
+    recovery: Object.freeze({
+      async showDataFolder() {
+        const request = recoveryContract['recovery:show-data-folder'].request.parse({})
+        return recoveryContract['recovery:show-data-folder'].response.parse(await invoke('recovery:show-data-folder', request))
+      },
+      async restart() {
+        const request = recoveryContract['recovery:restart'].request.parse({})
+        return recoveryContract['recovery:restart'].response.parse(await invoke('recovery:restart', request))
+      }
+    }),
     history: Object.freeze({
       list: (limit = 50) => call('history:list', { limit }),
       get: (id: string) => call('history:get', { id }),
@@ -116,6 +134,14 @@ export function createLaborApi(invoke: InvokeLabor, subscribe: Subscribe = () =>
       }
     }),
     browser: Object.freeze({
+      async previewSource(sessionId: string, recordId: string) {
+        const request = browserContracts['source:preview'].request.parse({ sessionId, recordId })
+        return browserContracts['source:preview'].response.parse(await invoke('source:preview', request))
+      },
+      async openSourceConfirmed(previewId: string) {
+        const request = browserContracts['source:open-confirmed'].request.parse({ previewId })
+        return browserContracts['source:open-confirmed'].response.parse(await invoke('source:open-confirmed', request))
+      },
       async preview(provider: 'bing', reason: string, queries: SearchQuery[]) {
         const request = browserContracts['browser:preview'].request.parse({ provider, reason, queries })
         return browserContracts['browser:preview'].response.parse(await invoke('browser:preview', request))

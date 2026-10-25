@@ -31,18 +31,19 @@ export function groupRelatedEvents(records: SourceRecord[]): EventGroup[] {
   const find = (index: number): number => parent[index] === index ? index : (parent[index] = find(parent[index]))
   const union = (a: number, b: number) => { const left = find(a), right = find(b); if (left !== right) parent[Math.max(left, right)] = Math.min(left, right) }
   const titleEvidence = ordered.map(({ title }) => titleTerms(title))
-  const matchEvidence = ordered.map(({ matchEvidence: evidence }) => new Set(evidence.flatMap((value) => [...titleTerms(value)])))
-  const evidenceByRecord = ordered.map((_, index) => new Set([...titleEvidence[index], ...matchEvidence[index]]))
+  const contentEvidence = ordered.map(({ title, excerpt }) => titleTerms(`${title} ${excerpt ?? ''}`))
+  const evidenceByRecord = contentEvidence
   for (let i = 0; i < ordered.length; i++) for (let j = i + 1; j < ordered.length; j++) {
     const left = ordered[i], right = ordered[j]
     if (left.subjectId !== right.subjectId) continue
     const leftDate = dateOf(left), rightDate = dateOf(right)
     if (leftDate === undefined || rightDate === undefined || Math.abs(leftDate - rightDate) > 14 * 24 * 60 * 60 * 1000) continue
     const sharedTitle = [...titleEvidence[i]].filter((term) => titleEvidence[j].has(term) && !STOP.has(term))
-    const sharedEvidence = [...matchEvidence[i]].filter((term) => matchEvidence[j].has(term) && !STOP.has(term))
-    const sharedEventTerm = EVENT_TERMS.some((term) => left.title.includes(term) && right.title.includes(term) &&
-      left.matchEvidence.some((evidence) => evidence.includes(term)) && right.matchEvidence.some((evidence) => evidence.includes(term)))
-    if (sharedTitle.length > 0 && sharedEvidence.length > 0 && sharedEventTerm) union(i, j)
+    const sharedContent = [...contentEvidence[i]].filter((term) => contentEvidence[j].has(term) && !STOP.has(term))
+    const sharedEventTerm = EVENT_TERMS.find((term) =>
+      left.title.includes(term) && right.title.includes(term) ||
+      term !== '劳动争议' && Boolean(left.excerpt?.includes(term) && right.excerpt?.includes(term)))
+    if (sharedTitle.length > 0 && sharedContent.length > 0 && sharedEventTerm) union(i, j)
   }
   const clusters = new Map<number, number[]>()
   ordered.forEach((_, index) => { const root = find(index), cluster = clusters.get(root) ?? []; cluster.push(index); clusters.set(root, cluster) })
@@ -55,7 +56,7 @@ export function groupRelatedEvents(records: SourceRecord[]): EventGroup[] {
       title: members[0].title,
       recordIds: members.map(({ id }) => id),
       status: 'suggested' as const,
-      matchEvidence: common.length ? common : ['标题和日期相近；仅供人工复核']
+      matchEvidence: common.length ? [`标题和摘录共同提及：${common.slice(0, 6).join('、')}；日期相近，仅供人工复核`] : ['标题和日期相近；仅供人工复核']
     }
   }).sort((a, b) => a.recordIds[0].localeCompare(b.recordIds[0]))
 }

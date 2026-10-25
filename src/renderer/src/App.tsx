@@ -34,14 +34,14 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    if (page !== 'history' || !settings?.saveHistory) { setHistory([]); return }
+    if (page !== 'history') return
     let active = true
     setStorageError('')
     void laborApi.history.list().then(items => { if (active) setHistory(items) }).catch(() => {
       if (active) setStorageError('检索历史暂时无法读取。')
     })
     return () => { active = false }
-  }, [page, settings?.saveHistory])
+  }, [page])
 
   async function updateSettings(patch: Partial<AppSettings>) {
     try {
@@ -104,7 +104,7 @@ export function App() {
   }
 
   return <>
-    {!settings && <main className="bootstrap-failure"><FailureState kind="database-recovery" onAction={() => window.location.reload()} technicalDetails={storageError || undefined} /></main>}
+    {!settings && <main className="bootstrap-failure"><section className="failure-state failure-state-database-recovery" role="alert"><span aria-hidden="true" className="failure-symbol">!</span><div className="failure-copy"><h1>本机记录暂时无法读取</h1><p>应用启动时无法打开本机数据库。现有数据库文件未被自动删除或覆盖。你可以先备份应用数据文件夹，再关闭并重新打开应用。</p><button className="text-action" type="button" onClick={() => { void window.laborApi.recovery.showDataFolder().catch(() => setStorageError('无法打开本机数据文件夹。')) }}>打开本机数据文件夹</button><button className="text-action" type="button" onClick={() => { void window.laborApi.recovery.restart() }}>关闭并重新打开应用</button>{storageError && <p role="status">{storageError}</p>}</div></section></main>}
     {settings && !settings.disclosureAcceptedAt && <FirstRunDisclosure saveHistory={settings.saveHistory} error={storageError || undefined} onAccept={value => { void acceptDisclosure(value) }} />}
     {settings?.disclosureAcceptedAt && !session && !progress && page === 'intake' && <IntakePage onConfirmed={input => { void startSearch(input) }} onHistory={() => setPage('history')} onSettings={() => setPage('settings')} />}
     {settings?.disclosureAcceptedAt && !session && !progress && page === 'history' && <HistoryPage sessions={history} saveHistory={settings.saveHistory} error={storageError || undefined} onIntake={() => setPage('intake')} onSettings={() => setPage('settings')} onOpen={item => { void openHistory(item.id) }} onDelete={id => { void deleteHistory(id) }} onClear={() => { void clearHistory() }} />}

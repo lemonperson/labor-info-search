@@ -50,7 +50,7 @@ test('first run requires disclosure acknowledgement before the search flow', asy
   } finally { await cleanup() }
 })
 
-test('history preference controls retention, and rows can be deleted or cleared after confirmation', async () => {
+test('history preference controls future retention, and existing rows remain manageable', async () => {
   test.setTimeout(90_000)
   const { desktop, cleanup } = await launchIsolated()
   try {
@@ -76,6 +76,10 @@ test('history preference controls retention, and rows can be deleted or cleared 
     await submitFixtureSearch(page)
     await page.getByRole('button', { name: '新建检索' }).click()
     await submitFixtureSearch(page)
+    await page.getByRole('button', { name: '新建检索' }).click()
+    await page.getByRole('button', { name: '设置' }).click()
+    await page.getByRole('checkbox', { name: '保存本机检索历史' }).click()
+    await expect(page.getByRole('checkbox', { name: '保存本机检索历史' })).not.toBeChecked()
     await page.getByRole('button', { name: '历史' }).click()
     await expect(page.getByRole('button', { name: /青禾制造有限公司/u })).toHaveCount(2)
     await page.getByRole('button', { name: '删除这条记录' }).first().click()

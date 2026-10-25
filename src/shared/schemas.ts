@@ -211,6 +211,8 @@ export const browserFallbackPreviewSchema = z.object({
   expiresAt: timestamp
 }).strict()
 export const browserOpenConfirmedRequestSchema = z.object({ previewId: z.uuid() }).strict()
+export const sourcePreviewRequestSchema = z.object({ sessionId: z.uuid(), recordId: z.string().min(1).max(128) }).strict()
+export const sourcePreviewResponseSchema = z.object({ previewId: z.uuid(), title: nonBlankText, url: z.url({ protocol: /^https?$/ }), hostname: nonBlankText, expiresAt: timestamp }).strict()
 export const browserOpenResponseSchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(true), value: z.undefined() }).strict(),
   z.object({ ok: z.literal(false), error: z.enum(['preview-not-found', 'preview-expired', 'browser-open-failed']) }).strict()

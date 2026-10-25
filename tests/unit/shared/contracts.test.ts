@@ -36,7 +36,7 @@ describe('app-info IPC contract', () => {
       requests.push(args)
       return { name: '劳动信息检索', version: '0.1.0', platform: 'win32' }
     })
-    expect(Object.keys(api)).toEqual(['getAppInfo', 'history', 'settings', 'search', 'image', 'marketplace', 'browser'])
+    expect(Object.keys(api)).toEqual(['getAppInfo', 'recovery', 'history', 'settings', 'search', 'image', 'marketplace', 'browser'])
     await expect(api.getAppInfo()).resolves.toEqual({ name: '劳动信息检索', version: '0.1.0', platform: 'win32' })
     expect(requests).toEqual([['app:get-info', {}]])
     await expect(createLaborApi(async () => ({ name: 'spoofed' })).getAppInfo()).rejects.toThrow()

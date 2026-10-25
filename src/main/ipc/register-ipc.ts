@@ -1,5 +1,5 @@
 import type { BrowserWindow } from 'electron'
-import { marketplaceResolveRequestSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema, productResolutionSchema, storageMutationResponseSchema } from '../../shared/schemas'
+import { marketplaceResolveRequestSchema, ocrProgressSchema, ocrRequestSchema, ocrResultSchema, productResolutionSchema, storageEmptyRequestSchema, storageMutationResponseSchema } from '../../shared/schemas'
 import type { OcrProgress, Result } from '../../shared/types'
 import { extractEntityCandidates } from '../identity/candidate-extractor'
 import { recognizeImage, type OcrTextResult } from '../ocr/ocr-service'
@@ -10,6 +10,7 @@ import type { SearchSessionService } from '../search/search-session-service'
 import { randomUUID } from 'node:crypto'
 import { browserFallbackPreviewRequestSchema, browserFallbackPreviewSchema, browserOpenConfirmedRequestSchema, browserOpenResponseSchema } from '../../shared/schemas'
 import { buildBrowserFallback } from '../search/browser-fallback'
+import { createSourcePreviewHandlers } from '../search/source-preview'
 
 const pickChannel = 'image:pick-and-recognize' as const
 const cancelChannel = 'image:cancel' as const
@@ -219,13 +220,31 @@ export function createBrowserFallbackHandlers(dependencies: BrowserFallbackDepen
   }
 }
 
-export async function registerBrowserIpc(getWindow: () => BrowserWindow | null): Promise<void> {
+export async function registerBrowserIpc(getWindow: () => BrowserWindow | null, lookupRecord: (sessionId: string, recordId: string) => { title: string; url: string } | null): Promise<void> {
   const { ipcMain, shell } = await import('electron')
   const handlers = createBrowserFallbackHandlers({ openExternal: url => shell.openExternal(url) })
+  const sourceHandlers = createSourcePreviewHandlers({ lookupRecord, openExternal: url => shell.openExternal(url) })
   const entries: Array<[string, (payload: unknown) => unknown]> = [
-    [browserPreviewChannel, handlers[browserPreviewChannel]], [browserOpenChannel, handlers[browserOpenChannel]]
+    [browserPreviewChannel, handlers[browserPreviewChannel]], [browserOpenChannel, handlers[browserOpenChannel]],
+    ['source:preview', sourceHandlers.preview], ['source:open-confirmed', sourceHandlers.openConfirmed]
   ]
   for (const [channel, handler] of entries) {
     ipcMain.handle(channel, createSenderCheckedHandler(getWindow, handler))
   }
+}
+
+export async function registerRecoveryIpc(getWindow: () => BrowserWindow | null): Promise<void> {
+  const { app, ipcMain, shell } = await import('electron')
+  ipcMain.handle('recovery:show-data-folder', createSenderCheckedHandler(getWindow, async payload => {
+    storageEmptyRequestSchema.parse(payload)
+    const error = await shell.openPath(app.getPath('userData'))
+    if (error) throw new Error('Could not open application data folder')
+    return storageMutationResponseSchema.parse(null)
+  }))
+  ipcMain.handle('recovery:restart', createSenderCheckedHandler(getWindow, payload => {
+    storageEmptyRequestSchema.parse(payload)
+    app.relaunch()
+    app.exit(0)
+    return storageMutationResponseSchema.parse(null)
+  }))
 }

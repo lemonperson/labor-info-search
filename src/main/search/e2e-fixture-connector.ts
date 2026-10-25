@@ -6,6 +6,7 @@ export class E2ESearchFixtureConnector implements SearchConnector {
   readonly id = 'e2e-fixture'
   async search(query: SearchQuery, signal: AbortSignal): Promise<ConnectorResult> {
     if (signal.aborted) return { ok: false, error: { code: 'cancelled' } }
+    if (process.env.LABOR_SEARCH_E2E_FIXTURE_FAIL === 'enabled') return { ok: false, error: { code: 'network_error' } }
     if (!query.id.endsWith(':wages')) return { ok: true, records: [] }
     const record: SourceRecord = {
       id: 'e2e-fixture-result', subjectId: query.subjectId, title: '劳动争议信息测试记录',
