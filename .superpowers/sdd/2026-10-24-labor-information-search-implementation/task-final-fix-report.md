@@ -1,9 +1,9 @@
 # Final fix-wave report
 
-Date: 2026-10-25  
-Branch: `feature/labor-info-search`  
-Base: `de24a0000031b287cd62686053ac9a68eb427d40`  
-Commit: pending at report write time; see final Git summary.  
+Date: 2026-10-25
+Branch: `feature/labor-info-search`
+Base: `de24a0000031b287cd62686053ac9a68eb427d40`
+Implementation commit: `ebf24f5cd12bfa225d585925e30111c7cbd4521a`
 Scope: local code, tests, docs, CI, packaging, and release-workflow corrections only. Nothing was published, pushed, tagged, or released.
 
 ## Dispositions by finding
