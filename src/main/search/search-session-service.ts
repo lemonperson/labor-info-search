@@ -26,7 +26,9 @@ export class SearchSessionService {
   async start(input: ConfirmedSubjectInput, progressPort: (progress: SessionProgress) => void, requestedSessionId?: string): Promise<SearchSession> {
     const confirmed = confirmedSubjectInputSchema.parse(input)
     const sessionId = requestedSessionId ?? this.options.createId?.() ?? randomUUID()
-    if (this.controllers.has(sessionId)) throw new TypeError('Search session ID is already active')
+    if (this.controllers.has(sessionId) || this.repository.getSession(sessionId)) {
+      throw new TypeError('Search session ID already exists')
+    }
     const startedAt = this.options.now?.() ?? new Date().toISOString()
     const controller = new AbortController()
     this.controllers.set(sessionId, controller)

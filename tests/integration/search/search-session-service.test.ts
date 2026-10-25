@@ -147,6 +147,17 @@ describe('search IPC lifetime', () => {
     expect((left as { id: string }).id).not.toBe((right as { id: string }).id)
   })
 
+  it('rejects a completed session ID collision without overwriting saved history', async () => {
+    const sessionId = '8d4576e0-f8ad-44db-a42a-000000000003'
+    const connector: SearchConnector = { id: 'empty', search: async () => ({ ok: true, records: [] }) }
+    const instance = service([connector])
+    const saved = await instance.start(input, () => {}, sessionId)
+    const changedInput = { ...input, subject: { ...input.subject, name: '另一个企业' } }
+
+    await expect(instance.start(changedInput, () => {}, sessionId)).rejects.toThrow('Search session ID already exists')
+    expect(repository.getSession(sessionId)).toEqual(saved)
+  })
+
   it('rejects an untrusted sender and subframe before invoking a handler', async () => {
     const { createSenderCheckedHandler } = await import('../../../src/main/ipc/register-ipc')
     const mainFrame = {}

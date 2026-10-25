@@ -159,6 +159,49 @@ test('OCR candidates can be corrected before explicit confirmation without openi
   expect(await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1)
 })
 
+test('renderer cancellation stops pending OCR and discards its eventual response', async () => {
+  await desktop.evaluate(({ ipcMain }) => {
+    const state = globalThis as typeof globalThis & { task14OcrStarted?: boolean; task14OcrCancelled?: boolean; task14ResolveOcr?: (result: unknown) => void }
+    state.task14OcrStarted = false
+    state.task14OcrCancelled = false
+    ipcMain.removeHandler('image:pick-and-recognize')
+    ipcMain.handle('image:pick-and-recognize', () => new Promise(resolve => {
+      state.task14OcrStarted = true
+      state.task14ResolveOcr = resolve
+    }))
+    ipcMain.removeHandler('image:cancel')
+    ipcMain.handle('image:cancel', () => {
+      state.task14OcrCancelled = true
+      state.task14ResolveOcr?.({ ok: false, error: 'cancelled' })
+      return null
+    })
+  })
+  const page = await desktop.firstWindow()
+  await page.getByRole('tab', { name: '上传截图' }).click()
+  await page.getByRole('button', { name: '选择截图' }).click()
+  await expect(page.getByRole('button', { name: '取消' })).toBeVisible()
+  expect(await desktop.evaluate(() => (globalThis as typeof globalThis & { task14OcrStarted?: boolean }).task14OcrStarted)).toBe(true)
+  await page.getByRole('button', { name: '取消' }).click()
+  await expect(page.getByRole('alert')).toContainText('已取消')
+  await expect(page.getByRole('button', { name: '选择截图' })).toBeEnabled()
+  expect(await desktop.evaluate(() => (globalThis as typeof globalThis & { task14OcrCancelled?: boolean }).task14OcrCancelled)).toBe(true)
+  expect(await page.getByRole('heading', { name: '正在整理可核验的来源' }).count()).toBe(0)
+})
+
+test('OCR degradation keeps unclear screenshots editable and never starts a search', async () => {
+  const page = await desktop.firstWindow()
+  await desktop.evaluate(({ dialog }, imagePath) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [imagePath] })
+  }, resolve('tests/fixtures/ocr/no-company.png'))
+  await page.getByRole('tab', { name: '上传截图' }).click()
+  await page.getByRole('button', { name: '选择截图' }).click()
+  await expect(page.getByRole('alert')).toContainText('截图文字识别不够清晰', { timeout: 30_000 })
+  await expect(page.getByRole('button', { name: '编辑识别文字' })).toBeVisible()
+  await expect(page.locator('textarea')).toBeEnabled()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: '正在整理可核验的来源' })).toHaveCount(0)
+})
+
 test('round trips validated privacy settings through the isolated storage bridge', async () => {
   const page = await desktop.firstWindow()
   await expect(page.getByRole('status')).toHaveText('已就绪')
