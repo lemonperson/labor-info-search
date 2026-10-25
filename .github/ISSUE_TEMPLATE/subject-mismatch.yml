@@ -1,0 +1,24 @@
+name: Subject mismatch
+description: Report a result associated with the wrong organization
+title: "[Subject mismatch]: "
+labels: [subject-mismatch]
+body:
+  - type: textarea
+    id: subject
+    attributes:
+      label: Subject shown and correct subject
+      description: Explain which distinct entities may have been conflated.
+    validations:
+      required: true
+  - type: input
+    id: public-url
+    attributes:
+      label: Public result URL
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Public evidence for the distinction
+    validations:
+      required: true

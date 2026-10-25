@@ -14,7 +14,7 @@ import { configureOcrModelDirectory, shutdownOcrWorker } from './ocr/ocr-service
 let mainWindow: BrowserWindow | null = null
 let database: DatabaseHandle | null = null
 
-if (!app.isPackaged && process.env.LABOR_SEARCH_E2E_USER_DATA) {
+if (process.env.LABOR_SEARCH_E2E_USER_DATA && (!app.isPackaged || process.env.LABOR_SEARCH_E2E_PACKAGED === 'enabled')) {
   app.setPath('userData', process.env.LABOR_SEARCH_E2E_USER_DATA)
 }
 

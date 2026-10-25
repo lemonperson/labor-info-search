@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="劳动信息检索">
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="#f5f1e8"/>
+  <path d="M70 66h116v17H70zm0 38h76v14H70zm0 34h58v14H70z" fill="#1f3441"/>
+  <circle cx="158" cy="164" r="31" fill="none" stroke="#c77844" stroke-width="14"/>
+  <path d="m181 187 25 25" fill="none" stroke="#c77844" stroke-width="16" stroke-linecap="round"/>
+  <path d="M70 179h47" fill="none" stroke="#738b83" stroke-width="11" stroke-linecap="round"/>
+</svg>

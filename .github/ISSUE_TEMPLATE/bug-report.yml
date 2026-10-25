@@ -1,0 +1,27 @@
+name: Bug report
+description: Report a reproducible application problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please remove personal or confidential information before submitting.
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the expected and observed result.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error message (optional)
+      render: text

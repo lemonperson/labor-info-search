@@ -1,0 +1,25 @@
+name: Source correction
+description: Report a broken or misclassified public source
+title: "[Source]: "
+labels: [source]
+body:
+  - type: input
+    id: url
+    attributes:
+      label: Public source URL
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Correction requested
+      description: Describe the source issue and provide public supporting links.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I have not included private personal information.
+          required: true

@@ -1,0 +1,54 @@
+name: Windows Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm dist:win
+      - run: pnpm dist:portable
+      - run: pnpm playwright test tests/e2e/packaged-app.spec.ts
+      - name: Create SHA-256 checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -File -Filter '*.exe' | ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Set-Content -LiteralPath "$($_.FullName).sha256" -Encoding utf8NoBOM
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-${{ github.ref_name }}
+          path: |
+            dist/*.exe
+            dist/*.sha256
+          if-no-files-found: error
+      - name: Publish unsigned binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            These Windows binaries are unsigned. Windows may show an unknown-publisher warning. Verify each download with its attached SHA-256 checksum.
+          files: |
+            dist/*.exe
+            dist/*.sha256
