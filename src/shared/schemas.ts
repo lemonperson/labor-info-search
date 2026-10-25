@@ -125,7 +125,8 @@ export const sourceRegistrySchema = z.object({
 export const appSettingsSchema = z.object({
   saveHistory: z.boolean(),
   theme: z.enum(['system', 'light', 'dark']),
-  browserProvider: z.enum(['bing', 'baidu', 'google'])
+  browserProvider: z.enum(['bing', 'baidu', 'google']),
+  disclosureAcceptedAt: timestamp.optional()
 }).strict()
 
 export const settingsPatchSchema = appSettingsSchema.partial().strict()

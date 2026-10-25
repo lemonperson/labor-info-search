@@ -23,6 +23,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 #root { min-height: 100vh; }
 .app-frame { min-height: 100vh; display: flex; flex-direction: column; background: var(--panel); }
 .app-topbar { height: 66px; padding: 0 clamp(22px, 5.6vw, 78px); border-bottom: 1px solid #edf0f3; display: flex; align-items: center; justify-content: space-between; }
+.app-navigation { display: flex; align-items: center; gap: 5px; }
+.app-navigation .text-action { min-width: 50px; }
 .app-wordmark { display: flex; align-items: center; gap: 10px; color: var(--ink); font-size: 14px; font-weight: 600; letter-spacing: .01em; }
 .app-mark { position: relative; width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid #d9e0e7; border-radius: 8px; }
 .app-mark i { position: relative; width: 9px; height: 9px; border: 1.5px solid var(--accent); border-radius: 50%; }
@@ -143,12 +145,50 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .search-progress-track { height: 4px; overflow: hidden; margin-top: 25px; border-radius: 4px; background: #edf0f3; }
 .search-progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 200ms ease; }
 .search-error { width: min(100% - 44px, 700px); margin: 70px auto; color: #72513f; font-size: 13px; }
+.first-run-shell { min-height: calc(100vh - 105px); display: grid; place-items: center; padding: 24px; }
+.first-run-shell .confirm-dialog { width: min(100%, 650px); }
+.disclosure-list { display: grid; gap: 10px; margin: 0; padding-left: 21px; color: var(--subtle); font-size: 13px; line-height: 1.7; }
+.setting-toggle { display: flex; align-items: flex-start; gap: 11px; cursor: pointer; }
+.setting-toggle > input { width: 18px; height: 18px; flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--accent); }
+.setting-toggle > span { display: grid; gap: 5px; }
+.setting-toggle strong { color: var(--ink); font-size: 13px; font-weight: 550; }
+.setting-toggle small { color: var(--subtle); font-size: 12px; line-height: 1.6; }
+.first-run-shell .setting-toggle { margin-top: 20px; border-top: 1px solid #edf0f2; padding-top: 16px; }
+.first-run-shell .dialog-actions { margin-top: 19px; }
+.settings-shell, .history-shell { width: min(100%, 920px); flex: 1; margin: 0 auto; padding: clamp(38px, 6vh, 64px) clamp(22px, 5.6vw, 72px) 52px; }
+.settings-shell > h1, .history-heading h1 { margin: 0; color: var(--ink); font-size: clamp(25px, 3.5vw, 34px); line-height: 1.35; font-weight: 550; letter-spacing: -.035em; }
+.settings-section { margin-top: 29px; border-top: 1px solid var(--line); padding: 22px 0; }
+.settings-section .quiet-copy { margin-left: 29px; }
+.technical-details { margin-top: 23px; border-top: 1px solid #edf0f2; padding-top: 15px; color: var(--subtle); font-size: 12px; }
+.technical-details summary { min-height: 38px; width: fit-content; padding: 9px 2px; color: var(--accent); cursor: pointer; }
+.technical-details pre { max-width: 100%; overflow-x: auto; border-radius: 7px; background: #f6f7f8; padding: 12px; color: #556273; font: inherit; line-height: 1.7; white-space: pre-wrap; user-select: text; }
+.technical-copy { min-height: 38px; padding-left: 0; }
+.settings-technical { max-width: 620px; }
+.history-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.history-list { margin: 24px 0 0; padding: 0; border-top: 1px solid var(--line); list-style: none; }
+.history-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid #edf0f2; }
+.history-row-open { display: grid; flex: 1; gap: 6px; min-width: 0; border: 0; background: transparent; padding: 16px 2px; text-align: left; cursor: pointer; }
+.history-row-open strong { color: var(--ink); font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }
+.history-row-open span { color: var(--subtle); font-size: 11px; }
+.history-row-delete { flex: 0 0 auto; }
+.history-off-note { margin-top: 27px; border-radius: 8px; background: #f6f7f8; padding: 14px; color: var(--subtle); font-size: 13px; line-height: 1.7; }
+.failure-state { display: flex; align-items: flex-start; gap: 11px; margin: 20px 0; border-radius: 9px; background: #f6f7f8; padding: 15px 16px; color: var(--subtle); }
+.failure-symbol { display: grid; width: 20px; height: 20px; flex: 0 0 auto; place-items: center; border: 1px solid #9ba6b2; border-radius: 50%; color: #536171; font-size: 12px; font-weight: 650; }
+.failure-copy { min-width: 0; }
+.failure-copy h2 { margin: 0; color: var(--ink); font-size: 13px; font-weight: 600; line-height: 1.5; }
+.failure-copy p { margin: 5px 0 0; font-size: 12px; line-height: 1.7; }
+.failure-copy > .text-action { margin-top: 5px; padding-left: 0; }
+.failure-state .technical-details { margin-top: 10px; }
+.bootstrap-failure { width: min(100% - 44px, 700px); margin: 70px auto; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise-in { from { opacity: .75; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 600px) {
   .app-topbar { height: 58px; padding: 0 19px; }
+  .app-topnote { display: none; }
+  .app-navigation { gap: 0; }
+  .app-navigation .text-action { min-width: 42px; padding: 0 8px; font-size: 12px; }
   .app-topnote { font-size: 10px; }
   .intake-shell { padding: 60px 22px 46px; }
   .intake-shell h1 { font-size: 30px; letter-spacing: -.035em; }
@@ -179,6 +219,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .results-footer-actions { align-items: flex-start; flex-direction: column; gap: 4px; }
   .detail-card { padding-top: 16px; }
   .browser-preview-facts > div { grid-template-columns: 77px minmax(0,1fr); }
+  .first-run-shell { min-height: calc(100vh - 90px); padding: 14px; }
+  .history-shell, .settings-shell { padding: 38px 21px 35px; }
+  .history-heading { align-items: flex-start; }
+  .history-heading > .text-action { flex: 0 0 auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

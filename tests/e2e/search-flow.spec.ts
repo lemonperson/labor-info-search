@@ -1,15 +1,25 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 import type { ElectronApplication } from '@playwright/test'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 let desktop: ElectronApplication
+let userData: string
 test.beforeEach(async () => {
   const env = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
   delete env.NO_COLOR
   delete env.ELECTRON_RUN_AS_NODE
+  userData = await mkdtemp(join(tmpdir(), 'labor-search-e2e-'))
+  env.LABOR_SEARCH_E2E_USER_DATA = userData
   env.LABOR_SEARCH_E2E_FIXTURE = 'enabled'
   desktop = await electron.launch({ args: ['.'], env })
+  const page = await desktop.firstWindow()
+  await expect(page.locator('.app-status')).toHaveText('已就绪')
+  const acknowledge = page.getByRole('button', { name: '我已了解，继续' })
+  if (await acknowledge.count()) await acknowledge.click()
 })
-test.afterEach(async () => { await desktop?.close() })
+test.afterEach(async () => { await desktop?.close(); if (userData) await rm(userData, { recursive: true, force: true }) })
 
 test('runs a best-effort session only after explicit subject confirmation', async () => {
   test.setTimeout(90_000)

@@ -6,13 +6,14 @@ import { SegmentedInput } from '../../components/SegmentedInput'
 import { SubjectConfirmation } from '../subject/SubjectConfirmation'
 import { candidatesFromLabelledText, subjectCandidate, type ConfirmedSubjectInput, type SubjectOrigin } from '../subject/subject-state'
 import { validateIntake, type IntakeMode } from './intake-state'
+import { FailureState, type FailureKind } from '../../components/FailureState'
 
-type Props = { onConfirmed?(value: ConfirmedSubjectInput): void }
+type Props = { onConfirmed?(value: ConfirmedSubjectInput): void; onHistory?(): void; onSettings?(): void }
 type Busy = 'resolving-link' | 'recognizing-image' | undefined
 
 const modeNames: Record<IntakeMode, string> = { 'company-name': '企业名称', 'product-link': '商品链接', screenshot: '截图文字' }
 
-export function IntakePage({ onConfirmed }: Props) {
+export function IntakePage({ onConfirmed, onHistory, onSettings }: Props) {
   const [mode, setMode] = useState<IntakeMode>('company-name')
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
@@ -23,6 +24,7 @@ export function IntakePage({ onConfirmed }: Props) {
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [confirmed, setConfirmed] = useState<ConfirmedSubjectInput>()
   const [outcome, setOutcome] = useState('')
+  const [failure, setFailure] = useState<FailureKind>()
   const requestId = useRef(0)
 
   useEffect(() => mode === 'screenshot' ? laborApi.image.onProgress(({ status }) => setProgress(status)) : undefined, [mode])
@@ -37,6 +39,7 @@ export function IntakePage({ onConfirmed }: Props) {
     setValue('')
     setError('')
     setOutcome('')
+    setFailure(undefined)
   }
 
   async function pickScreenshot() {
@@ -44,6 +47,7 @@ export function IntakePage({ onConfirmed }: Props) {
     const operationId = ++requestId.current
     setBusy('recognizing-image')
     setError('')
+    setFailure(undefined)
     setProgress('正在准备识别…')
     try {
       const result = await laborApi.image.pickAndRecognize()
@@ -55,10 +59,11 @@ export function IntakePage({ onConfirmed }: Props) {
       setValue(result.value.rawText)
       setCandidates(result.value.candidates)
       setOrigin('screenshot')
-      setOutcome(result.value.candidates.length ? `识别出 ${result.value.candidates.length} 个主体候选，请核对名称和关系。` : '未从图片文字中识别出企业主体，可编辑文字或改为手动输入。')
+      setFailure(result.value.needsReview ? 'ocr-low-confidence' : undefined)
+      setOutcome(result.value.needsReview ? '' : result.value.candidates.length ? `识别出 ${result.value.candidates.length} 个主体候选，请核对名称和关系。` : '未从图片文字中识别出企业主体，可编辑文字或改为手动输入。')
     } catch {
       if (requestId.current !== operationId) return
-      setError('截图识别暂时不可用。你可以改用手动输入。')
+      setFailure('ocr-low-confidence')
     } finally { if (requestId.current === operationId) { setBusy(undefined); setProgress('') } }
   }
 
@@ -69,6 +74,7 @@ export function IntakePage({ onConfirmed }: Props) {
     setBusy(undefined)
     setProgress('')
     setError('已取消，可以更换输入方式。')
+    setFailure(undefined)
     if (current === 'recognizing-image') await laborApi.image.cancel().catch(() => null)
     else await laborApi.marketplace.cancel().catch(() => null)
   }
@@ -80,6 +86,7 @@ export function IntakePage({ onConfirmed }: Props) {
     if (validation) { setError(validation); return }
     setError('')
     setOutcome('')
+    setFailure(undefined)
 
     if (mode === 'company-name') {
       const name = value.trim()
@@ -110,11 +117,12 @@ export function IntakePage({ onConfirmed }: Props) {
         setOutcome(resolution.productTitle ? `商品：${resolution.productTitle}` : '商品页已读取，请确认具体企业主体。')
         setShowConfirmation(true)
       } else {
-        setError(resolution.warnings[0] || '未能从商品页读取企业信息。你可以尝试上传截图或手动输入。')
+        if (resolution.status === 'blocked') setFailure('link-blocked')
+        else setError(resolution.warnings[0] || '未能从商品页读取企业信息。你可以尝试上传截图或手动输入。')
       }
     } catch {
       if (requestId.current !== operationId) return
-      setError('无法读取商品链接。你可以尝试上传截图或手动输入企业名称。')
+      setFailure('link-blocked')
     } finally { if (requestId.current === operationId) setBusy(undefined) }
   }
 
@@ -122,7 +130,7 @@ export function IntakePage({ onConfirmed }: Props) {
   const placeholder = mode === 'company-name' ? '例如：示例制造有限公司' : mode === 'product-link' ? '粘贴淘宝、京东、抖音或拼多多商品链接' : '选择截图后，识别出的文字会显示在这里'
   const primaryLabel = busy === 'resolving-link' ? '正在读取商品页…' : busy === 'recognizing-image' ? '正在识别截图…' : mode === 'screenshot' ? '选择截图' : '继续确认主体'
 
-  return <AppChrome>
+  return <AppChrome onHistory={onHistory} onSettings={onSettings}>
     <main className="intake-shell">
       <p className="eyebrow">公开信息 · 来源可核验</p>
       <h1>了解一家企业，<br className="wide-break" />如何对待劳动者。</h1>
@@ -145,6 +153,10 @@ export function IntakePage({ onConfirmed }: Props) {
       </form>
       {busy && <div className="busy-row" role="status" aria-live="polite"><span className="spinner" aria-hidden="true" />{busy === 'resolving-link' ? '正在安全读取商品页' : progress || '正在识别本地图片'}<button type="button" className="text-action" onClick={() => { void cancel() }}>取消</button></div>}
       {error && <p className="field-error" role="alert">{error}</p>}
+      {failure && <FailureState kind={failure} announcementRole="alert" onAction={() => {
+        if (failure === 'link-blocked') switchMode('company-name')
+        else document.getElementById('intake-value')?.focus()
+      }} />}
       {outcome && <p className="inline-note" role="status">{outcome}</p>}
       <div className="helper-copy"><span className="helper-mark" aria-hidden="true" /><span>截图在本机识别；商品链接只读取公开商品页。检索前会请你确认具体主体。</span></div>
       <ol className="intake-steps" aria-label="检索步骤">

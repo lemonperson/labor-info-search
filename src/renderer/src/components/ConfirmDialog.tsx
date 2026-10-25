@@ -1,8 +1,8 @@
 import { useEffect, useRef, type KeyboardEvent, type PropsWithChildren } from 'react'
 
-type Props = PropsWithChildren<{ title: string; onClose(): void }>
+type Props = PropsWithChildren<{ title: string; onClose(): void; kicker?: string; closeLabel?: string; showCloseButton?: boolean }>
 
-export function ConfirmDialog({ title, onClose, children }: Props) {
+export function ConfirmDialog({ title, onClose, children, kicker = '检索前确认', closeLabel = '关闭主体确认', showCloseButton = true }: Props) {
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined
@@ -25,8 +25,8 @@ export function ConfirmDialog({ title, onClose, children }: Props) {
   }
   return <div className="dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
     <section ref={panel} className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" onKeyDown={handleKeyDown}>
-      <button className="dialog-close" type="button" aria-label="关闭主体确认" onClick={onClose}>×</button>
-      <p className="section-kicker">检索前确认</p>
+      {showCloseButton && <button className="dialog-close" type="button" aria-label={closeLabel} onClick={onClose}>×</button>}
+      <p className="section-kicker">{kicker}</p>
       <h2 id="dialog-title">{title}</h2>
       {children}
     </section>

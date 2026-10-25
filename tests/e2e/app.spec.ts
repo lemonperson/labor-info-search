@@ -1,16 +1,25 @@
 import { test, expect, _electron as electron } from '@playwright/test'
 import type { ElectronApplication } from '@playwright/test'
 import type { WebContents, WebPreferences } from 'electron'
-import { resolve } from 'node:path'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 
 let desktop: ElectronApplication
+let userData: string
 test.beforeEach(async () => {
   const env = Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
   delete env.NO_COLOR
   delete env.ELECTRON_RUN_AS_NODE
+  userData = mkdtempSync(join(tmpdir(), 'labor-app-e2e-'))
+  env.LABOR_SEARCH_E2E_USER_DATA = userData
   desktop = await electron.launch({ args: ['.'], env })
+  const page = await desktop.firstWindow()
+  await expect(page.locator('.app-status')).toHaveText('已就绪')
+  const acknowledge = page.getByRole('button', { name: '我已了解，继续' })
+  if (await acknowledge.count()) await acknowledge.click()
 })
-test.afterEach(async () => { await desktop?.close() })
+test.afterEach(async () => { await desktop?.close(); if (userData) rmSync(userData, { recursive: true, force: true }) })
 
 test('loads the product through a minimal isolated bridge without Node globals', async () => {
   const page = await desktop.firstWindow()

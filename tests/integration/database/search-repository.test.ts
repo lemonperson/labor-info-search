@@ -92,9 +92,10 @@ describe('private search storage', () => {
     expect(new SettingsRepository(db).getSettings().theme).toBe('dark')
   })
 
-  it('rejects image bytes, long excerpts, and upgraded personal statements before writing', () => {
+  it('rejects screenshot path or bytes, long excerpts, and upgraded personal statements before writing', () => {
     for (const invalid of [
       { ...session(), imageBytes: 'base64-image' },
+      { ...session(), imagePath: 'C:/Users/person/private-label.png' },
       { ...session(), records: [{ ...session().records[0], excerpt: '文'.repeat(1201) }] },
       { ...session(), records: [{ ...session().records[0], claimStatus: 'independently-confirmed' }] }
     ]) expect(() => repository.saveSession(invalid as never)).toThrow()
