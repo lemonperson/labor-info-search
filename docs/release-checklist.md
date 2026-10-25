@@ -48,8 +48,8 @@ The portable build initially timed out while electron-builder attempted a downlo
 
 | Artifact | Size | SHA-256 |
 |---|---:|---|
-| `dist/劳动信息检索-0.1.0-x64.exe` | 140,237,971 bytes | `4b3ad456f354c229a764e61f3d234b5c8139a65ba6ef7f90149b887809d7d88e` |
-| `dist/劳动信息检索-0.1.0-x64-portable.exe` | 120,388,499 bytes | `0859091722fac2cb587f4d1d74b0025367552fa03b5b82a2f0f3c3342cf05f55` |
+| `dist/劳动信息检索-0.1.0-x64.exe` | 140,238,013 bytes | `167896643a9d5045eecf369728a95dca4704c1d7b38035b4258feea57d3c59b5` |
+| `dist/劳动信息检索-0.1.0-x64-portable.exe` | 120,393,664 bytes | `94d9d760afb91198b9ec1fdf64175c89e1bfa06a5ea2491d7d7fff16ad7c83dc` |
 
 Matching `.sha256` sidecars were refreshed in `dist/` and verified against the built files.
 
